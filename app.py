@@ -34,6 +34,7 @@ FIREBASE_AUTH_DOMAIN = os.getenv("FIREBASE_AUTH_DOMAIN","").strip()
 FIREBASE_ENABLED = bool(FIREBASE_PROJECT_ID and FIREBASE_API_KEY and FIREBASE_APP_ID and FIREBASE_AUTH_DOMAIN)
 FIREBASE_JS = Path(__file__).with_name("firebase-client.js")
 MODEL_RELEASE_JSON = Path(__file__).with_name("model-release.json")
+COUNSELING_REFERENCE_JSON = Path(__file__).with_name("counseling_reference.json")
 LOCAL_WORKER_JS = Path(__file__).with_name("local-model-worker.js")
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
@@ -272,6 +273,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
         if p=="/firebase-client.js":
             return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
+        if p=="/counseling_reference.json":
+            # Publicly licensed, researcher-generated synthetic style examples only.
+            # The actual user's conversation never needs to leave the device for inference.
+            return self.send(200,COUNSELING_REFERENCE_JSON.read_bytes(),"application/json; charset=utf-8")
         if p=="/model-release.json":
             # Only a separately approved, committed release manifest may select custom browser weights.
             payload = MODEL_RELEASE_JSON.read_bytes() if MODEL_RELEASE_JSON.is_file() else b'{"schema":1,"active":false}'
