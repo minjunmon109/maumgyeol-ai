@@ -30,7 +30,7 @@ ASKING_FOR_ADVICE = re.compile(r"어떻게\s*(?:해야|할까|하면)|조언|해
 
 
 def normalize_mode(value):
-    return value if isinstance(value,str) and value in MODES else "reflect"
+    return value if isinstance(value,str) and (value=="auto" or value in MODES) else "auto"
 
 
 def effective_mode(mode, last_user_text):
@@ -38,10 +38,20 @@ def effective_mode(mode, last_user_text):
         return "steps"
     if re.search(r"그냥\s*(?:들어|얘기|말하고)|조언\s*(?:말고|하지)", last_user_text or ""):
         return "listen"
-    return normalize_mode(mode)
+    selected=normalize_mode(mode)
+    if selected!="auto":
+        return selected
+    # One integrated counseling mode. Listen first, explore thoughts and
+    # emotions when helpful; give concrete options only when asked.
+    spoken=(last_user_text or "").strip()
+    if ACKNOWLEDGMENT.search(spoken):
+        return "listen"
+    if re.search(r"그냥\s*(?:들어|얘기|말하고)|조언\s*(?:말고|하지)|위로\s*(?:해|해줘)|털어놓", spoken):
+        return "listen"
+    return "reflect"
 
 
-def conversation_instruction(messages, mode="listen"):
+def conversation_instruction(messages, mode="auto"):
     selected = effective_mode(mode, messages[-1]["content"] if messages else "")
     rule = MODES[selected]
     recent_questions = []
@@ -51,6 +61,12 @@ def conversation_instruction(messages, mode="listen"):
         recent_questions.extend(re.findall(r"[^.!?。\n]{4,}[?？]", message.get("content", "")))
     prior = " / ".join(q.strip()[-110:] for q in recent_questions[-3:])
     note = ("최근 이미 물어본 질문: " + prior) if prior else "아직 최근 질문 없음."
+    if normalize_mode(mode)=="auto":
+        rule += (
+            " 사용자가 감정만 털어놓을 때는 서둘러 문제를 해결하지 말고 경청으로 시작합니다."
+            " 대화가 충분히 이어지고 원한다면 의미를 정리하거나 선택지를 함께 찾습니다."
+            " 질문할 필요가 없으면 질문하지 않습니다."
+        )
     acknowledgment = messages and ACKNOWLEDGMENT.search(messages[-1]["content"])
     return (
         "\n\n[이번 응답의 운영 지침]\n" + rule +
@@ -92,7 +108,7 @@ def _repeated_question(question, previous_questions):
     return False
 
 
-def refine_reply(text, messages, mode="listen"):
+def refine_reply(text, messages, mode="auto"):
     """Remove repetitive/leading questions without fabricating user details."""
     if not text:
         return text
