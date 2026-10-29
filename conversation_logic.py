@@ -30,7 +30,7 @@ ASKING_FOR_ADVICE = re.compile(r"어떻게\s*(?:해야|할까|하면)|조언|해
 
 
 def normalize_mode(value):
-    return value if value in MODES else "listen"
+    return value if isinstance(value,str) and value in MODES else "reflect"
 
 
 def effective_mode(mode, last_user_text):
@@ -102,7 +102,7 @@ def refine_reply(text, messages, mode="listen"):
         for q in _question_parts(m.get("content", ""))
     ]
     acknowledged = bool(messages and ACKNOWLEDGMENT.search(messages[-1]["content"]))
-    parts = re.findall(r"[^.!?。\n]+[.!?。]?|\n+", text)
+    parts = re.findall(r"[^.!?。？\n]+[.!?。？]?|\n+", text)
     kept = []
     questions = 0
     for part in parts:
