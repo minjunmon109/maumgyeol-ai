@@ -1,35 +1,17 @@
-# 마음결 무료 Qwen 연결 안내
+# API 키 없는 로컬 AI
 
-현재 Render 사이트는 **GPU가 없으며**, 독자 학습한 Qwen3-4B 가중치가 연결되어 있지 않습니다.
-무료로 생성형 대화를 시험할 때는 공개 API의 **무료 버전**만 이용합니다.
+기본 모델은 **Qwen3 8B**, 실행기는 **Ollama**입니다. 익명 외부 무료 API 자동 연결을 제거했습니다. 더 가벼운 기기에서는 `qwen3:4b`를 선택하세요. 한국어 상담 품질의 우월성은 아직 비교 검증하지 않았습니다.
 
-## 직접 해야 하는 2가지 작업
+1. https://ollama.com 에서 Ollama를 설치하고 실행합니다.
+2. `ollama pull qwen3:8b`로 모델을 내려받습니다(수 GB 다운로드).
+3. 서버 환경에 `ACCESS_CODE`와 충분히 긴 무작위 `AUTH_SECRET`을 설정합니다.
+4. `python app.py`를 실행하고 http://localhost:10000 에 접속합니다.
 
-1. [OpenRouter API 키 페이지](https://openrouter.ai/settings/keys)에서 무료 계정을 만들고 새 키를 발급합니다. 카드 등록·크레딧 구매는 하지 않습니다.
-2. [Render 마음결 환경 변수 페이지](https://dashboard.render.com/web/srv-dbhi8a8ae00c73drjdj0/env)에 접속하여 다음 **비밀 환경 변수**를 추가합니다.
+기본값: `MODEL_PROVIDER=ollama`, `MODEL_NAME=qwen3:8b`, `MODEL_URL=http://127.0.0.1:11434/api/chat`.
+4B 사용 시 `ollama pull qwen3:4b` 후 `MODEL_NAME=qwen3:4b`를 설정하세요.
 
-   | Key | Value |
-   | --- | --- |
-   | `OPENROUTER_API_KEY` | 방금 발급한 개인 비밀 키 |
+API 키·호출 요금·제공업체의 일일 호출 할당량은 없습니다. 컴퓨터 메모리, 전력, 처리 속도, 동시 요청 수의 물리적 한계는 있습니다. 앱의 과도한 요청 방지 제한은 유지됩니다. 모델 다운로드 후 추론에 외부 모델 서비스는 필요하지 않습니다. Firebase를 구성했다면 로그인·기록 동기화는 별도의 외부 서비스입니다.
 
-키는 채팅, GitHub, 공개 파일에 붙여넣지 않습니다. Render에만 저장합니다.
+**Render 배포 주의:** Render 서버의 localhost는 사용자의 PC가 아닙니다. 기존 무료 웹 서버만으로 8B 모델이 동작한다고 보장할 수 없습니다. 모델을 실행할 충분한 자원이 있는 동일 머신에서 앱을 실행하거나 접근 가능한 별도 모델 서버를 구성해야 합니다. Ollama 포트를 인터넷에 그대로 공개하지 마세요. 기존 `MODEL_URL`, `MODEL_NAME`, `MODEL_PROVIDER` 환경 변수가 있으면 기본값보다 우선합니다. 기존 OPENROUTER_API_KEY와 KEYLESS_BACKEND 자동 선택은 제거되었습니다.
 
-기본 모델은 `qwen/qwen3.8-27b:free`입니다. 모델이 내려가면 `OPENROUTER_MODEL=openrouter/free`로 무료 라우터를 선택할 수 있지만 동일한 Qwen이 나온다고 보장할 수 없습니다. **무료 모델 이외에는 요청하지 않도록 서버에서 차단합니다.** 구매·유료 자동 대체 기능은 없습니다.
-
-## 안전, 개인정보, 제한
-
-- 무료 엔드포인트는 사용량 및 이용 가능 시간에 제한이 있으며 품질 보장이나 상시 가동 보장이 없습니다.
-- 모델은 사용자 본인이 추가 학습한 Qwen3-4B가 아닙니다. 외부에서 제공하는 무료 사전학습 모델을 상담 지침으로 동작시키는 **시제품**입니다.
-- 모델이 연결되면 사용자가 동의한 대화 내용이 Render 서버를 거쳐 OpenRouter 및 해당 모델 제공업체로 전송됩니다.
-- 코드에서 `provider.data_collection=deny`를 설정해 사용자의 대화 데이터를 수집할 수 있는 제공업체를 제외합니다. 이 필터와 호환되는 무료 제공업체가 없다면 **응답이 실패할 수 있으며 자동으로 필터를 완화하지 않습니다.**
-- 민감한 개인정보나 실제 임상 사례를 입력하지 마세요. 상담 내용의 절대적인 비밀유지, 임상적 정확성, 상업 운영 적합성을 보장하지 않습니다.
-- 위기 대응 키워드는 모델 API 호출 전에 안내 문장을 반환하지만, 키워드 규칙만으로 위험을 완벽하게 감지할 수 없습니다.
-- OpenRouter 이용 약관과 제공업체의 개인정보 처리 방침을 확인하고, 운영 전에 안전성·정보보호·전문가 검증이 필요합니다.
-
-## 유료 모델 방지
-
-사용 중인 `OPENROUTER_MODEL`은 반드시 `:free`로 끝나거나 정확히 `openrouter/free`여야 합니다. 유료 모델 ID가 설정되면 서버는 시작을 거부합니다.
-
-## 원래의 사용자 전용 모델을 완성하려면
-
-Colab 등에서 Qwen3-4B를 QLoRA로 추가 학습한 뒤, 학습 결과를 운영할 GPU 서버를 별도로 준비하고 Render의 `MODEL_URL`, `MODEL_NAME`, `MODEL_API_KEY`를 설정해야 합니다. Colab 무료 세션은 상시 서비스가 아닙니다.
+공식 참고: https://ollama.com/library/qwen3:8b · https://docs.ollama.com/api/chat

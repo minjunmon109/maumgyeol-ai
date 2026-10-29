@@ -13,33 +13,14 @@ from conversation_logic import conversation_instruction, effective_mode, normali
 PORT = int(os.getenv("PORT", "10000"))
 ACCESS_CODE = os.environ["ACCESS_CODE"]
 AUTH_SECRET = os.environ["AUTH_SECRET"]
-MODEL_URL = os.getenv("MODEL_URL", "").strip()
+# Local inference by default: no hosted provider, account, or API key.
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "ollama").strip()
+MODEL_URL = os.getenv("MODEL_URL", "http://127.0.0.1:11434/api/chat").strip()
 MODEL_API_KEY = os.getenv("MODEL_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "maumgyeol-qwen3-4b")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai")
-# Optional free hosted inference. Key is configured privately in Render, never in GitHub.
-# Free variants only: never fall back to billable models.
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen3-8b:free").strip()
-if OPENROUTER_API_KEY and not MODEL_URL:
-    if not OPENROUTER_MODEL.endswith(":free"):
-        raise RuntimeError("Only free OpenRouter models are allowed")
-    MODEL_URL = "https://openrouter.ai/api/v1/chat/completions"
-    MODEL_API_KEY = OPENROUTER_API_KEY
-    MODEL_NAME = OPENROUTER_MODEL
-    MODEL_PROVIDER = "openai"
-FREE_EXTERNAL = bool(OPENROUTER_API_KEY and MODEL_URL == "https://openrouter.ai/api/v1/chat/completions")
-# Zero-download, anonymous, no-API-key large-model trial.
-# Authorized by the official Kilo gateway's anonymous :free access policy.
-# Never use paid model IDs, and never send a secret token to this provider.
-KEYLESS_BACKEND = os.getenv("KEYLESS_BACKEND", "kilo").strip().lower() == "kilo" and not os.getenv("MODEL_URL","").strip()
-if KEYLESS_BACKEND:
-    MODEL_URL = "https://api.kilo.ai/api/gateway/chat/completions"
-    MODEL_API_KEY = ""
-    MODEL_NAME = "poolside/laguna-s-2.1:free"
-    MODEL_PROVIDER = "openai"
-    FREE_EXTERNAL = True
-MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("openrouter" if FREE_EXTERNAL else "custom")
+MODEL_NAME = os.getenv("MODEL_NAME", "qwen3:8b")
+KEYLESS_BACKEND = False
+FREE_EXTERNAL = urlsplit(MODEL_URL).hostname not in ("localhost", "127.0.0.1", "::1", None)
+MODEL_SOURCE = "ollama" if MODEL_PROVIDER == "ollama" else "custom"
 
 MODEL_PROBE_STATUS = "ok" if MODEL_URL else "not_configured"
 FREE_MODEL_COOLDOWN_UNTIL = 0.0
@@ -152,10 +133,11 @@ def build_chat_payload(messages, stream=False, mode="auto", rehearsal=None):
     payload={"model":MODEL_NAME,"messages":[{"role":"system","content":system_text}]+history,
              "stream":stream,"temperature":0.35,"max_tokens":260}
     if MODEL_PROVIDER=="ollama":
-        payload["options"]={"temperature":0.35}
+        payload["think"]=False
+        payload["options"]={"temperature":0.35,"num_predict":512,"num_ctx":8192}
         payload.pop("temperature",None)
         payload.pop("max_tokens",None)
-    elif FREE_EXTERNAL and not KEYLESS_BACKEND:
+    elif "openrouter.ai" == urlsplit(MODEL_URL).hostname:
         payload["provider"]={"data_collection":"deny"}
     return payload
 
@@ -287,7 +269,15 @@ class Handler(BaseHTTPRequestHandler):
         if p=="/firebase-client.js":
             return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/api/status":
-            return self.send(200,{"ready":bool(MODEL_URL) and model_available(),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":"available" if model_available() else "rate_limited","provider":MODEL_SOURCE,"mode":"single-generative-model","model":MODEL_NAME if MODEL_URL else None})
+            ready = bool(MODEL_URL) and model_available()
+            if MODEL_PROVIDER == "ollama":
+                try:
+                    base = MODEL_URL.rsplit("/api/", 1)[0]
+                    with urlopen(base + "/api/tags", timeout=2) as response:
+                        ready = any(m.get("name") == MODEL_NAME for m in json.load(response).get("models", []))
+                except Exception:
+                    ready = False
+            return self.send(200,{"ready":ready,"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":"available" if ready else "unavailable","provider":MODEL_SOURCE,"mode":"single-generative-model","model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
     def stream_chat(self,messages,mode="auto",rehearsal=None):
@@ -333,19 +323,19 @@ class Handler(BaseHTTPRequestHandler):
                 content_type=response.headers.get("Content-Type","")
                 if "application/json" in content_type:
                     data=json.load(response)
-                    raw=(data.get("choices") or [{}])[0].get("message",{}).get("content") or ""
+                    raw=(data.get("message",{}).get("content", "") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")) or ""
                 else:
                     for line in response:
                         if len(raw)>=1800:
                             break
-                        if not line.startswith(b"data:"):
+                        if MODEL_PROVIDER != "ollama" and not line.startswith(b"data:"):
                             continue
-                        data=line[5:].strip()
+                        data=line.strip() if MODEL_PROVIDER=="ollama" else line[5:].strip()
                         if data==b"[DONE]":
                             break
                         try:
                             chunk=json.loads(data)
-                            delta=(chunk.get("choices") or [{}])[0].get("delta") or {}
+                            delta=chunk.get("message",{}) if MODEL_PROVIDER=="ollama" else (chunk.get("choices") or [{}])[0].get("delta") or {}
                             part=delta.get("content")
                             if not isinstance(part,str):
                                 continue

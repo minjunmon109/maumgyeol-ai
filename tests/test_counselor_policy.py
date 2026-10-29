@@ -29,7 +29,7 @@ class CounselorPolicyTests(unittest.TestCase):
     def test_modes(self):
         self.assertEqual(normalize_mode("listen"), "listen")
         self.assertEqual(normalize_mode("steps"), "steps")
-        self.assertEqual(normalize_mode("random"), "reflect")
+        self.assertEqual(normalize_mode("random"), "auto")
     def test_listen_does_not_interrogate(self):
         history=[{"role":"user","content":"친구가 멀리 있어서 외로워요."}]
         reply=refine_reply("멀리 떨어져 지내는 게 쓸쓸하시겠어요. 연락이 줄었나요?",history,"listen")
