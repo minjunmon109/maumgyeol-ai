@@ -62,13 +62,46 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .speech-hint.active{color:#b46452;font-weight:500}
 @keyframes mic-beat{0%,100%{box-shadow:0 0 0 0 rgba(194,105,90,.18)}50%{box-shadow:0 0 0 5px rgba(194,105,90,.04)}}
 @media(max-width:620px){.adaptive-mode{gap:8px;padding:10px}.adaptive-mode strong{font-size:11px}.adaptive-mode small{font-size:9px}.adaptive-auto{font-size:9px}.composer-footer{gap:4px}.composer-footer>span{display:none}.composer-footer .mic-button{margin-left:auto;margin-right:3px;padding:7px 9px}.composer-footer .voice-toggle{margin-right:5px;padding:6px}.speech-hint{font-size:9px}}
+/* Integrated counseling and self-care suite */
+.care-panel{width:min(100%,840px);margin:34px auto 44px;display:block}
+.care-panel[hidden]{display:none}
+.care-header{padding:25px 22px 25px;border:1px solid #e1e8db;border-radius:17px;background:linear-gradient(119deg,#f0f5eb,#fcfbf6)}
+.care-eyebrow{letter-spacing:1.2px;font-size:10px;font-weight:600;color:#849b77}
+.care-header h2{font-family:Georgia,'Nanum Myeongjo',serif;font-size:clamp(25px,3vw,37px);font-weight:400;line-height:1.5;letter-spacing:-.8px;color:#566c53;margin:12px 0}
+.care-header h2 span{color:#71916d}
+.care-header p{max-width:590px;color:#84947d;font-size:12px;line-height:1.9;margin:0}
+.care-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:15px}
+.care-card{display:flex;flex-direction:column;min-height:208px;border:1px solid #e4e8df;border-radius:15px;background:#fffefb;padding:21px 21px 17px;box-shadow:0 4px 18px rgba(76,94,71,.035)}
+.care-symbol{background:#e9efe4;border-radius:9px;color:#6f9169;width:38px;height:38px;display:grid;place-items:center;font-size:22px}
+.care-card h3{color:#567053;font-size:15px;margin:13px 0 3px;font-weight:600}
+.care-card p{font-size:11px;line-height:1.8;color:#8d9c87;margin:0 0 13px}
+.care-action{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #dbe6d6;border-radius:9px;background:#f6f9f3;color:#617e5e;padding:10px 12px;font-size:11px;font-weight:600;cursor:pointer}
+.care-action:hover{background:#edf3ea}
+.care-mood-current,.ground-step{background:#f6f5ef;border-radius:8px;padding:9px;font-size:11px;line-height:1.7;color:#7d8e77;margin:5px 0 12px}
+.thought-workspace{margin-top:18px;border:1px solid #e4e8df;border-radius:16px;background:#fffefb;padding:25px}
+.thought-heading{display:flex;justify-content:space-between;align-items:start;gap:15px}
+.thought-heading h3{font-family:Georgia,'Nanum Myeongjo',serif;color:#5c7559;font-size:22px;line-height:1.5;font-weight:400;margin:8px 0 20px}
+.thought-privacy{white-space:nowrap;color:#9ba792;font-size:10px}
+.thought-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.thought-fields label{font-weight:600;color:#637b61;font-size:11px;line-height:1.7}
+.thought-fields textarea{width:100%;min-height:114px;margin-top:7px;resize:vertical;background:#fbfcf8;border:1px solid #e0e7dc;border-radius:9px;padding:12px;color:#51694f;font:inherit;font-weight:400;font-size:11px;line-height:1.8;outline-color:#9ab596}
+.thought-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.thought-actions button{padding:9px 12px;font-size:11px;border:1px solid #d9e6d3;background:#eef4e9;border-radius:9px;color:#557651;cursor:pointer}
+.thought-actions button:nth-child(2){background:#668665;color:white;border-color:#668665}
+.thought-actions button:nth-child(3){background:transparent;color:#899987}
+.thought-preview{margin-top:12px;padding:14px;background:#f2f6ed;border-radius:10px;color:#5e795a;font-size:12px;line-height:2;white-space:pre-wrap}
+.thought-disclosure{font-size:10px;color:#99a694;line-height:1.8;margin:13px 0 0}
+.care-support{background:#f9f3e9;border-radius:13px;margin-top:18px;padding:18px 21px;color:#98816d}
+.care-support span{display:block;font-weight:600;font-size:12px}
+.care-support p{font-size:11px;line-height:1.8;margin:7px 0 0}
+@media(max-width:700px){.care-panel{margin:15px auto 24px}.care-grid{grid-template-columns:1fr;gap:10px}.care-card{min-height:0;padding:17px}.thought-workspace{padding:18px}.thought-heading{display:block}.thought-heading h3{font-size:21px;margin-bottom:5px}.thought-privacy{display:block;margin:0 0 14px}.thought-fields{grid-template-columns:1fr}.thought-fields textarea{min-height:80px}.care-header{padding:22px 17px}}
 </style></head>
 <body>
 <div class="shell">
 <aside class="sidebar" aria-label="주 메뉴">
   <div class="brand"><svg viewBox="0 0 50 50" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M25 42V17M25 29C12 28 9 20 11 9c12 0 17 7 14 20Zm0-4C39 23 43 16 41 7 29 7 23 15 25 25Z"/><path d="M15 44h22"/></svg><div><strong>마음결</strong><small>MAEUMGYEOL</small></div></div>
   <button class="new-chat" id="newChat"><span>＋</span> 새로운 대화</button>
-  <nav class="nav" aria-label="페이지"><button class="nav-item active" data-view="talk"><span>☏</span> 대화하기 <i>•</i></button><button class="nav-item" data-view="mood"><span>♡</span> 마음 돌보기</button><button class="nav-item" data-view="about"><span>ⓘ</span> 이 공간에 대해</button></nav>
+  <nav class="nav" aria-label="페이지"><button class="nav-item active" data-view="talk"><span>☏</span> 대화하기 <i>•</i></button><button class="nav-item" data-view="care"><span>✦</span> 통합 마음 관리</button><button class="nav-item" data-view="mood"><span>♡</span> 마음 돌보기</button><button class="nav-item" data-view="about"><span>ⓘ</span> 이 공간에 대해</button></nav>
   <section class="history"><p>이번 방문의 대화</p><span id="historySummary">첫 이야기를 기다리고 있어요.</span></section>
   <div class="sidebar-bottom"><div class="twig">♧</div><p>말하지 못했던 고민도<br>천천히 이야기해요.</p><button id="clearChat" class="text-button">대화 초기화 ↗</button><span>마음결 · 심리상담 대화</span></div>
 </aside>
@@ -79,6 +112,24 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 <section id="intro" class="intro"><div class="botanical" aria-hidden="true"><svg viewBox="0 0 180 160"><circle cx="86" cy="75" r="62" fill="#eeefe2"/><circle cx="127" cy="30" r="22" fill="#f0cbaa"/><path d="M83 132v-81" stroke="#667f61" stroke-width="2.2"/><path d="M83 94C53 91 46 72 49 59c29 0 37 19 34 35M83 99c30-10 34-31 31-42C90 62 79 81 83 99" fill="#799471"/><path d="M83 70c-24-7-29-28-22-38 18 5 25 20 22 38" fill="#b1c1a2"/><path d="M60 133h50" stroke="#647b5d"/><path d="M20 126c43 20 96 20 142-2" stroke="#d5dac9" fill="none"/></svg></div><div class="eyebrow">마음이 쉬어 가는 대화</div><h1>혼자 안고 있던 마음,<br><span class="hero-accent">여기서 천천히 이야기해요.</span></h1><p>고민을 잘 설명하지 않아도 괜찮아요.<br>지금 어떤 일이 마음에 남아 있는지부터 나눠 주세요.</p><div class="intro-caption"><span>✦</span> 서두르지 않는 경청 · 감정과 생각 정리 · 나에게 맞는 작은 선택</div></section>
 <section id="suggestions" class="suggestions" aria-label="대화 시작 주제"><button class="suggestion" data-message="친구와 멀리 떨어져 지내다 보니 외롭고 연락하는 것도 부담스러워졌어요."><span class="suggestion-icon warm">♡</span><span><b>친구·관계 고민</b><small>멀어지는 것 같은 마음, 관계의 거리</small></span><em>↗</em></button><button class="suggestion" data-message="요즘 생각이 너무 많아서 쉬어도 쉬는 것 같지 않아요."><span class="suggestion-icon lavender">☾</span><span><b>걱정과 불안</b><small>꼬리를 무는 생각을 천천히 정리</small></span><em>↗</em></button><button class="suggestion" data-message="자꾸 저를 탓하게 되고 자신감이 떨어져요."><span class="suggestion-icon green">✧</span><span><b>자존감·자기비난</b><small>나를 바라보는 마음을 돌아보기</small></span><em>↗</em></button><button class="suggestion" data-message="조언보다 우선 그냥 제 이야기를 들어줬으면 좋겠어요."><span class="suggestion-icon sand">♧</span><span><b>그냥 털어놓고 싶어요</b><small>해결보다 먼저, 충분히 들어주기</small></span><em>↗</em></button></section>
 <section id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="대화 내용"></section>
+<section id="carePanel" class="care-panel" hidden aria-label="마음결 통합 마음관리 솔루션">
+  <div class="care-header"><div class="care-eyebrow">마음결 · 통합 마음 관리</div><h2>마음을 돌보는 방법을<br><span>한곳에 모았어요.</span></h2><p>누군가에게 털어놓고 싶을 때부터 마음을 정리하고 잠깐 쉬고 싶을 때까지, 지금 필요한 것을 선택해 보세요.</p></div>
+  <div class="care-grid">
+    <article class="care-card"><span class="care-symbol">♡</span><h3>대화로 마음 풀기</h3><p>고민을 이야기하면 마음결이 먼저 듣고, 필요한 만큼 함께 정리합니다.</p><button id="careTalkButton" class="care-action" type="button">마음결과 이야기하기 <span>↗</span></button></article>
+    <article class="care-card"><span class="care-symbol">☾</span><h3>오늘의 감정 체크</h3><p>지금 느끼는 감정을 알아차려 보세요. 감정을 평가하거나 진단하지 않습니다.</p><div class="care-mood-current" id="careMoodCurrent" aria-live="polite">아직 선택한 감정이 없어요.</div><button id="careMoodButton" class="care-action" type="button">감정 선택하기 <span>↗</span></button></article>
+    <article class="care-card"><span class="care-symbol">◌</span><h3>1분 호흡 휴식</h3><p>부드러운 호흡 안내를 따라 잠시 쉬어가세요. 불편하면 언제든 멈출 수 있습니다.</p><button id="careBreathButton" class="care-action" type="button">호흡 안내 시작하기 <span>↗</span></button></article>
+    <article class="care-card"><span class="care-symbol">✦</span><h3>감각으로 안정 찾기</h3><p>불안하거나 생각이 복잡할 때 주변의 감각에 주의를 기울여 보세요.</p><div id="groundStep" class="ground-step" aria-live="polite">주변에서 눈에 보이는 것 다섯 가지를 찾아보세요.</div><button id="groundNext" class="care-action" type="button">다음 단계 <span>↗</span></button></article>
+  </div>
+  <div class="thought-workspace"><div class="thought-heading"><div><span class="care-eyebrow">나만의 마음 정리 노트</span><h3>지금의 고민을 세 가지로 나눠 볼까요?</h3></div><span class="thought-privacy">이 화면에서만 작성 · 자동 저장 안 함</span></div>
+    <div class="thought-fields"><label>어떤 일이 있었나요?<textarea id="thoughtEvent" rows="2" maxlength="900" placeholder="예: 친구가 멀리 있어서 연락이 뜸해졌어요."></textarea></label>
+    <label>어떤 마음이 들었나요?<textarea id="thoughtFeeling" rows="2" maxlength="900" placeholder="예: 보고 싶은 마음과 서운함이 함께 있어요."></textarea></label>
+    <label>지금 가장 바라는 것은 무엇인가요?<textarea id="thoughtNeed" rows="2" maxlength="900" placeholder="예: 부담 없이 마음을 전하고 싶어요."></textarea></label></div>
+    <div class="thought-actions"><button type="button" id="thoughtOrganize">내 화면에서 정리하기</button><button type="button" id="thoughtDiscuss">마음결과 이어서 이야기하기</button><button type="button" id="thoughtClear">내용 지우기</button></div>
+    <div id="thoughtPreview" class="thought-preview" hidden aria-live="polite"></div>
+    <p class="thought-disclosure">정리한 내용은 자동으로 전송되지 않습니다. ‘마음결과 이어서 이야기하기’를 직접 선택할 때만 대화 요청에 포함됩니다.</p>
+  </div>
+  <div class="care-support"><span>도움이 급하게 필요할 때</span><p>자신이나 다른 사람의 안전이 위협받는다면 대화 서비스보다 가까운 사람과 응급 지원을 먼저 이용하세요. 긴급 신고 119·112, 자살예방상담전화 109</p></div>
+</section>
 <section id="aboutPanel" class="about-panel" hidden><div class="eyebrow">마음결을 소개합니다</div><h2>이야기가 잠시 쉬어갈 수 있도록.</h2><p>마음결은 경청과 감정 반영을 바탕으로 고민과 관계, 스트레스에 관해 함께 정리하는 심리상담 대화 공간입니다.</p><p>마음결은 자동 대화 서비스이며 실제 상담사나 의료전문가의 진단·치료·응급 대응을 대신하지 않습니다. 위급한 상황에서는 119 또는 자살예방상담전화 109로 연락해 주세요.</p></section>
 <div class="composer-area"><div class="composer-head"><span>지금 어떤 방식으로 함께할까요?</span><small id="readyText">당신의 속도로 이야기해요</small></div><div class="adaptive-mode" aria-label="상담 방식 자동 조절"><span class="adaptive-mark">✧</span><div><strong>마음결이 대화의 흐름에 맞춰 함께해요</strong><small>필요할 때는 들어주고, 마음을 정리하고, 방법을 함께 찾아요.</small></div><span class="adaptive-auto">자동</span></div><label id="externalConsentWrap" hidden style="display:none;align-items:flex-start;gap:8px;padding:10px 12px;margin:8px 0 5px;background:#f1f5ed;border-radius:9px;font-size:11px;line-height:1.7;color:#5b7356"><input id="externalConsent" type="checkbox" style="margin-top:3px;flex:0 0 auto" /><span>외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 모델 파일 다운로드나 별도 API 키는 필요하지 않습니다. 제공업체의 데이터 보존·학습 정책은 다를 수 있으며 비밀유지가 보장되지 않습니다. 개인정보·실제 상담 기록 등 민감한 내용은 입력하지 마세요.</span></label><form id="chatForm" class="composer"><label class="sr-only" for="messageBox">하고 싶은 이야기</label><textarea id="messageBox" rows="2" maxlength="2400" placeholder="무슨 일이 있었는지, 지금 어떤 마음인지 편하게 적어 주세요."></textarea><div class="composer-footer"><span>✧ &nbsp; 편하게 말씀해 주세요</span><button type="button" id="micButton" class="mic-button" aria-label="음성으로 말하기" aria-pressed="false" title="마이크를 누르고 말하면 자동 전송됩니다">🎙 말하기</button><button type="button" id="voiceToggle" class="voice-toggle" aria-label="자동 음성 끄기" aria-pressed="true" title="답변을 자동으로 읽어줍니다">🔊 음성 켜짐</button><button type="submit" id="sendButton" title="메시지 보내기" aria-label="메시지 보내기">↑</button></div></form><p id="speechHint" class="speech-hint" role="status" aria-live="polite">마이크를 누르고 한국어로 말하면, 글자로 바뀌어 자동 전송됩니다. 음성 인식은 브라우저 서비스에서 처리될 수 있어요.</p><p class="disclaimer">마음결은 AI 기반 자동 대화 서비스이며 전문 심리상담사의 상담·진단·치료를 대신하지 않습니다. 대화는 현재 서버에 저장하지 않지만 답변을 위해 외부 제공업체로 전송되며, 완전한 비밀유지를 보장하지 않습니다.</p></div>
 </main>
@@ -396,9 +447,71 @@ input.addEventListener('input',()=>{input.style.height='auto';input.style.height
 document.querySelectorAll('[data-message]').forEach(b=>b.addEventListener('click',()=>{selectView('talk');sendMessage(b.dataset.message);}));
 function resetChat(){if(busy)return;speechInput.cancel();voicePlayer.stop();messages.length=0;messageList.replaceChildren();$('aboutPanel').hidden=true;updateIntro();input.value='';selectView('talk');input.focus();}
 $('newChat').addEventListener('click',resetChat);$('clearChat').addEventListener('click',resetChat);
-function selectView(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('aboutPanel').hidden=view!=='about';if(view==='about'){$('intro').hidden=true;$('suggestions').hidden=true;$('messages').hidden=true;}else{$('messages').hidden=false;updateIntro();if(view==='mood')document.querySelector('.rightbar').scrollIntoView({behavior:'smooth',block:'nearest'});}}
+function selectView(view){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  const separate=view==='about'||view==='care';
+  $('aboutPanel').hidden=view!=='about';
+  $('carePanel').hidden=view!=='care';
+  if(separate){
+    $('intro').hidden=true;$('suggestions').hidden=true;$('messages').hidden=true;
+  }else{
+    $('messages').hidden=false;updateIntro();
+    if(view==='mood')document.querySelector('.rightbar').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  if(view==='care')$('carePanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
-document.querySelectorAll('[data-mood]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-mood]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');const mood=b.dataset.mood;$('moodCaption').textContent=mood+' — 지금의 마음을 알아차렸어요.';}));
+document.querySelectorAll('[data-mood]').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('[data-mood]').forEach(x=>x.classList.remove('selected'));
+ b.classList.add('selected');
+ const mood=b.dataset.mood;
+ $('moodCaption').textContent=mood+' — 지금의 마음을 알아차렸어요.';
+ $('careMoodCurrent').textContent='지금의 마음: '+mood;
+}));
+/* In-session self-care tools. Notes are never persisted or uploaded unless
+   the visitor explicitly presses the button to discuss them in chat. */
+$('careTalkButton').addEventListener('click',()=>{selectView('talk');input.focus();});
+$('careMoodButton').addEventListener('click',()=>selectView('mood'));
+$('careBreathButton').addEventListener('click',()=>{
+  selectView('mood');
+  if(!breathInterval)$('breathButton').click();
+});
+const groundSteps=[
+ '주변에서 눈에 보이는 것 다섯 가지를 찾아보세요.',
+ '손으로 느낄 수 있는 감각 네 가지를 알아차려 보세요.',
+ '들리는 소리 세 가지에 귀를 기울여 보세요.',
+ '맡을 수 있는 냄새 두 가지를 떠올려 보세요.',
+ '지금 느껴지는 맛이나 입안의 감각 한 가지를 알아차려 보세요.',
+ '수고하셨어요. 도움이 되었다면 잠시 쉬어가세요. 불편하면 멈춰도 괜찮아요.'
+];
+let groundIndex=0;
+$('groundNext').addEventListener('click',()=>{
+ groundIndex=(groundIndex+1)%groundSteps.length;
+ $('groundStep').textContent=groundSteps[groundIndex];
+ $('groundNext').innerHTML=groundIndex===groundSteps.length-1?'다시 시작하기 <span>↻</span>':'다음 단계 <span>↗</span>';
+});
+const noteIds=['thoughtEvent','thoughtFeeling','thoughtNeed'];
+const getNotes=()=>noteIds.map(k=>$(k).value.trim());
+const noteParts=()=>getNotes().map((v,i)=>v?(['일어난 일: ','그때의 마음: ','지금 바라는 점: '][i]+v):'').filter(Boolean);
+$('thoughtOrganize').addEventListener('click',()=>{
+ const parts=noteParts();
+ $('thoughtPreview').hidden=false;
+ $('thoughtPreview').textContent=parts.length?
+   '내 마음을 이렇게 정리했어요.\n\n'+parts.join('\n')+'\n\n한 번에 결론을 내리지 않아도 괜찮아요.':
+   '먼저 위 세 칸 중 편한 곳에 내용을 적어 주세요.';
+});
+$('thoughtDiscuss').addEventListener('click',()=>{
+ const parts=noteParts();
+ if(!parts.length){$('thoughtOrganize').click();return;}
+ const text='제가 지금의 고민을 정리했어요. 먼저 제 마음을 듣고 상황에 맞게 함께 이야기해 주세요.\n'+parts.join('\n');
+ selectView('talk');
+ sendMessage(text.slice(0,2400));
+});
+$('thoughtClear').addEventListener('click',()=>{
+ noteIds.forEach(k=>$(k).value='');
+ $('thoughtPreview').replaceChildren();$('thoughtPreview').hidden=true;
+});
+
 function stopBreathing(){if(breathInterval)clearInterval(breathInterval);breathInterval=null;$('breathRing').classList.remove('running');$('breathText').innerHTML='♧<br><span>들이쉬고, 내쉬고</span>';$('breathButton').innerHTML='1분 호흡 시작하기 <span>→</span>';}
 $('breathButton').addEventListener('click',()=>{if(breathInterval){stopBreathing();return;}breathElapsed=0;$('breathRing').classList.add('running');$('breathButton').textContent='호흡 멈추기';const tick=()=>{const t=breathElapsed%14;const label=t<4?'천천히 들이쉬기':t<8?'잠시 머무르기':'부드럽게 내쉬기';$('breathText').textContent=label;$('breathLegend').textContent=`남은 시간 ${Math.max(0,60-breathElapsed)}초`;if(breathElapsed++>=60){stopBreathing();$('breathLegend').textContent='1분의 쉼을 마쳤어요.';}};tick();breathInterval=setInterval(tick,1000);});
 fetch('/api/status').then(r=>r.json()).then(data=>{
