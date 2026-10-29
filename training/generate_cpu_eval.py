@@ -22,7 +22,7 @@ def generate(adapter, max_tokens, cases=CASES):
     from peft import PeftModel
     tokenizer = AutoTokenizer.from_pretrained(BASE, trust_remote_code=False)
     model = AutoModelForCausalLM.from_pretrained(
-        BASE, torch_dtype=torch.float32, low_cpu_mem_usage=True, trust_remote_code=False)
+        BASE, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, trust_remote_code=False)
     if adapter:
         path = Path(adapter)
         manifest_path = path / "training_manifest.json"
