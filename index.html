@@ -95,7 +95,17 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .care-support span{display:block;font-weight:600;font-size:12px}
 .care-support p{font-size:11px;line-height:1.8;margin:7px 0 0}
 @media(max-width:700px){.care-panel{margin:15px auto 24px}.care-grid{grid-template-columns:1fr;gap:10px}.care-card{min-height:0;padding:17px}.thought-workspace{padding:18px}.thought-heading{display:block}.thought-heading h3{font-size:21px;margin-bottom:5px}.thought-privacy{display:block;margin:0 0 14px}.thought-fields{grid-template-columns:1fr}.thought-fields textarea{min-height:80px}.care-header{padding:22px 17px}}
-.topbar-care{margin-left:auto;margin-right:15px;background:#e9f0e5;border:1px solid #d4e3d1;border-radius:20px;padding:8px 13px;font-size:11px;color:#5a7a58;white-space:nowrap;cursor:pointer;font-weight:600}.topbar-care:hover{background:#dfeade}.topbar-care:focus-visible{outline:2px solid #5c815a;outline-offset:2px}@media(max-width:620px){.topbar-care{margin-left:auto;margin-right:8px;padding:7px 9px;font-size:10px}.topbar .privacy{min-width:0}.topbar .privacy>span:not(.status){display:none}.topbar .status{border-left:0;margin-left:0;padding-left:0}}</style></head>
+.topbar-care{margin-left:auto;margin-right:15px;background:#e9f0e5;border:1px solid #d4e3d1;border-radius:20px;padding:8px 13px;font-size:11px;color:#5a7a58;white-space:nowrap;cursor:pointer;font-weight:600}.topbar-care:hover{background:#dfeade}.topbar-care:focus-visible{outline:2px solid #5c815a;outline-offset:2px}@media(max-width:620px){.topbar-care{margin-left:auto;margin-right:8px;padding:7px 9px;font-size:10px}.topbar .privacy{min-width:0}.topbar .privacy>span:not(.status){display:none}.topbar .status{border-left:0;margin-left:0;padding-left:0}}
+.emotion-daily{margin:16px 0;border:1px solid #dfe8db;background:linear-gradient(125deg,#fffefa,#f4f8f2);border-radius:17px;padding:22px}
+.emotion-heading{display:flex;align-items:center;justify-content:space-between;gap:15px}.emotion-heading h3{font-family:Georgia,'Nanum Myeongjo',serif;font-weight:400;font-size:24px;color:#537153;margin:7px 0 8px}
+.emotion-heading p{max-width:560px;line-height:1.75;color:#899b84;font-size:11px;margin:0}
+.emotion-face{font-size:42px;width:83px;height:83px;display:grid;place-items:center;border-radius:50%;background:#e7efdf;flex:0 0 auto}
+.emotion-main{display:flex;align-items:center;gap:12px;margin:17px 0;color:#5b7556}.emotion-main strong{font-size:16px;font-weight:600}.emotion-main span{font-size:20px;font-weight:700;margin-left:auto;font-variant-numeric:tabular-nums}
+.emotion-bars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 17px}.emotion-item{min-width:0}.emotion-row{display:flex;justify-content:space-between;gap:6px;align-items:center;color:#71866d;font-size:11px;margin-bottom:5px}.emotion-row strong{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}.emotion-track{height:8px;border-radius:15px;background:#e8eee3;overflow:hidden}.emotion-fill{display:block;height:100%;border-radius:15px;transition:width .2s ease;background:#89ac81}.emotion-empty{grid-column:1/-1;color:#9ba997;font-size:12px;padding:15px 0}
+.emotion-footer{border-top:1px solid #e4e9df;margin-top:18px;padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}.emotion-footer span{font-size:10px;line-height:1.8;color:#9cac95}.emotion-footer button{border:1px solid #d8e5d3;color:#668461;background:#f5f8f1;cursor:pointer;border-radius:18px;padding:8px 11px;font-size:10px;white-space:nowrap}
+.topbar-emotion{font-size:20px;margin-left:auto}.topbar-emotion+.topbar-care{margin-left:4px}
+@media(max-width:650px){.emotion-daily{padding:16px}.emotion-bars{grid-template-columns:1fr}.emotion-face{font-size:34px;width:62px;height:62px}.emotion-main strong{font-size:14px}.emotion-heading h3{font-size:21px}.emotion-footer{flex-wrap:wrap}.topbar-emotion{display:none}}
+</style></head>
 <body>
 <div class="shell">
 <aside class="sidebar" aria-label="주 메뉴">
@@ -106,7 +116,7 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
   <div class="sidebar-bottom"><div class="twig">♧</div><p>말하지 못했던 고민도<br>천천히 이야기해요.</p><button id="clearChat" class="text-button">대화 초기화 ↗</button><span>마음결 · 심리상담 대화</span></div>
 </aside>
 <div class="workspace">
-<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
+<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><span id="topbarEmotion" class="topbar-emotion" title="오늘의 마음 표현">🌱</span><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
 <div class="panes">
 <main class="main" id="mainContent">
 <section id="intro" class="intro"><div class="botanical" aria-hidden="true"><svg viewBox="0 0 180 160"><circle cx="86" cy="75" r="62" fill="#eeefe2"/><circle cx="127" cy="30" r="22" fill="#f0cbaa"/><path d="M83 132v-81" stroke="#667f61" stroke-width="2.2"/><path d="M83 94C53 91 46 72 49 59c29 0 37 19 34 35M83 99c30-10 34-31 31-42C90 62 79 81 83 99" fill="#799471"/><path d="M83 70c-24-7-29-28-22-38 18 5 25 20 22 38" fill="#b1c1a2"/><path d="M60 133h50" stroke="#647b5d"/><path d="M20 126c43 20 96 20 142-2" stroke="#d5dac9" fill="none"/></svg></div><div class="eyebrow">마음이 쉬어 가는 대화</div><h1>혼자 안고 있던 마음,<br><span class="hero-accent">여기서 천천히 이야기해요.</span></h1><p>고민을 잘 설명하지 않아도 괜찮아요.<br>지금 어떤 일이 마음에 남아 있는지부터 나눠 주세요.</p><div class="intro-caption"><span>✦</span> 서두르지 않는 경청 · 감정과 생각 정리 · 나에게 맞는 작은 선택</div></section>
@@ -114,7 +124,8 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 <section id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="대화 내용"></section>
 <section id="carePanel" class="care-panel" hidden aria-label="마음결 통합 마음관리 솔루션">
   <div class="care-header"><div class="care-eyebrow">마음결 · 통합 마음 관리</div><h2>마음을 돌보는 방법을<br><span>한곳에 모았어요.</span></h2><p>누군가에게 털어놓고 싶을 때부터 마음을 정리하고 잠깐 쉬고 싶을 때까지, 지금 필요한 것을 선택해 보세요.</p></div>
-  <div class="care-grid">
+  <section class="emotion-daily" aria-labelledby="emotionTitle"><div class="emotion-heading"><div><span class="care-eyebrow">오늘의 마음 표현</span><h3 id="emotionTitle">오늘의 감정</h3><p>오늘 나눈 이야기와 직접 고른 기분을 바탕으로 나타낸 참고 비율이에요. 정확한 감정 측정이나 진단은 아닙니다.</p></div><div id="emotionFace" class="emotion-face" aria-label="오늘 가장 많이 나타난 감정">🌱</div></div><div class="emotion-main"><strong id="emotionPrimary">오늘의 마음을 함께 알아볼까요?</strong><span id="emotionPrimaryPercent"></span></div><div class="emotion-bars" id="emotionBars"><div class="emotion-empty">아직 오늘 나눈 이야기가 없어요. 대화를 시작하면 여기에 표시됩니다.</div></div><div class="emotion-footer"><span>이 비율은 표현의 출현 정도를 단순 계산하며, 실제 심리 상태를 판단하지 않습니다.</span><button type="button" id="emotionTalk">오늘의 마음 이야기하기 ↗</button></div></section>
+<div class="care-grid">
     <article class="care-card"><span class="care-symbol">♡</span><h3>대화로 마음 풀기</h3><p>고민을 이야기하면 마음결이 먼저 듣고, 필요한 만큼 함께 정리합니다.</p><button id="careTalkButton" class="care-action" type="button">마음결과 이야기하기 <span>↗</span></button></article>
     <article class="care-card"><span class="care-symbol">☾</span><h3>오늘의 감정 체크</h3><p>지금 느끼는 감정을 알아차려 보세요. 감정을 평가하거나 진단하지 않습니다.</p><div class="care-mood-current" id="careMoodCurrent" aria-live="polite">아직 선택한 감정이 없어요.</div><button id="careMoodButton" class="care-action" type="button">감정 선택하기 <span>↗</span></button></article>
     <article class="care-card"><span class="care-symbol">◌</span><h3>1분 호흡 휴식</h3><p>부드러운 호흡 안내를 따라 잠시 쉬어가세요. 불편하면 언제든 멈출 수 있습니다.</p><button id="careBreathButton" class="care-action" type="button">호흡 안내 시작하기 <span>↗</span></button></article>
@@ -143,6 +154,71 @@ const $=id=>document.getElementById(id);
 const messages=[];
 let busy=false,breathInterval=null,breathElapsed=0;
 const intro=$('intro'),suggestions=$('suggestions'),messageList=$('messages'),input=$('messageBox'),send=$('sendButton');
+
+/* Transparent, on-device-only tally of emotional expressions today.
+   These are approximate proportions of words, not diagnostic scores. */
+const dailyEmotion=(()=>{
+ const categories=[
+  {name:'외로움',emoji:'🥺',color:'#ac9bc5',words:/외롭|그립|혼자인|거리감|보고\s*싶|고립|소외/g},
+  {name:'불안',emoji:'😟',color:'#cfab75',words:/불안|걱정|초조|두렵|긴장|무섭|겁나|신경\s*쓰/g},
+  {name:'슬픔',emoji:'😢',color:'#9cb5d1',words:/슬프|서운|눈물|우울|속상|허전|상처|울고/g},
+  {name:'지침',emoji:'😮‍💨',color:'#a5ae9c',words:/지치|피곤|힘들|버겁|스트레스|너무\s*많|무기력|숨막/g},
+  {name:'분노',emoji:'😠',color:'#d1998b',words:/화나|짜증|억울|분노|미워|열받|답답|화가\s*나/g},
+  {name:'기쁨',emoji:'😊',color:'#ddb67b',words:/기쁘|즐겁|행복|설레|신나|고마|좋아|뿌듯/g},
+  {name:'평온',emoji:'😌',color:'#98b89b',words:/평온|편안|안심|차분|괜찮|안정|안도|여유/g}
+ ];
+ let currentMood='',moodDate='';
+ const dateKey=(date=new Date())=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+ function setMood(mood){
+   currentMood=String(mood||'');moodDate=dateKey();update();
+ }
+ function tally(){
+   const today=dateKey();
+   const todayMessages=messages.filter(m=>m.role==='user'&&(!m.at||dateKey(new Date(m.at))===today));
+   const text=todayMessages.map(m=>m.content||'').join('\n');
+   let scores=categories.map(c=>({ ...c,score:(text.match(c.words)||[]).length }));
+   if(currentMood&&moodDate===today){
+     const lookup={'힘들어요':'지침','지쳤어요':'지침','그저 그래요':'평온','괜찮아요':'평온','좋아요':'기쁨'};
+     const selected=lookup[currentMood];
+     scores=scores.map(s=>({...s,score:s.score+(s.name===selected?2:0)}));
+   }
+   const total=scores.reduce((x,y)=>x+y.score,0);
+   if(!total)return [];
+   // Hamilton method: exact 100% without rounding drift.
+   const withPerc=scores.map(s=>{
+     const exact=s.score*100/total;return {...s,percent:Math.floor(exact),remainder:exact-Math.floor(exact)};
+   });
+   const left=100-withPerc.reduce((sum,a)=>sum+a.percent,0);
+   [...withPerc].sort((a,b)=>b.remainder-a.remainder).slice(0,left).forEach(x=>x.percent++);
+   return withPerc.filter(x=>x.score>0).sort((a,b)=>b.percent-a.percent);
+ }
+ function update(){
+   if(!$('emotionBars'))return;
+   const values=tally();
+   const face=$('emotionFace'),top=$('topbarEmotion');
+   const lead=values[0];
+   face.textContent=lead?lead.emoji:'🌱';top.textContent=lead?lead.emoji:'🌱';
+   face.setAttribute('aria-label',lead?'대화 속 가장 많이 나타난 표현: '+lead.name:'오늘 감정 표현이 없습니다');
+   $('emotionPrimary').textContent=lead?lead.name+' 표현이 가장 많았어요.':'오늘의 마음을 함께 알아볼까요?';
+   $('emotionPrimaryPercent').textContent=lead?lead.percent+'%':'';
+   const wrapper=$('emotionBars');wrapper.replaceChildren();
+   if(!values.length){
+     const empty=document.createElement('div');empty.className='emotion-empty';empty.textContent='오늘 대화를 시작하면 표현된 감정의 비율이 표시됩니다.';wrapper.append(empty);return;
+   }
+   for(const item of values){
+     const outer=document.createElement('div');outer.className='emotion-item';
+     const row=document.createElement('div');row.className='emotion-row';
+     const label=document.createElement('span');label.textContent=item.emoji+' '+item.name;
+     const pct=document.createElement('strong');pct.textContent=item.percent+'%';
+     row.append(label,pct);
+     const track=document.createElement('div');track.className='emotion-track';
+     const fill=document.createElement('span');fill.className='emotion-fill';fill.style.width=item.percent+'%';fill.style.backgroundColor=item.color;
+     track.append(fill);outer.append(row,track);wrapper.append(outer);
+   }
+ }
+ return {setMood,update,tally,dateKey};
+})();
+
 function scrollBottom(){requestAnimationFrame(()=>{if(messages.length) messageList.lastElementChild?.scrollIntoView({block:'end',behavior:'smooth'});});}
 function element(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!=null)el.textContent=text;return el;}
 
@@ -397,7 +473,7 @@ async function sendMessage(content){
   voicePlayer.startReply();
   busy=true;send.disabled=true;speechInput.update();input.value='';input.style.height='auto';
   $('readyText').textContent='말씀을 듣고 있어요';
-  messages.push({role:'user',content:text});addMessage('user',text);updateIntro();
+  messages.push({role:'user',content:text,at:Date.now()});addMessage('user',text);updateIntro();dailyEmotion.update();
   const pending=addMessage('assistant','마음결이 답변을 준비하고 있어요…',{pending:true});
   let completed=false;
   try{
@@ -445,7 +521,7 @@ $('chatForm').addEventListener('submit',e=>{e.preventDefault();sendMessage(input
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendMessage(input.value);}});
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,180)+'px';});
 document.querySelectorAll('[data-message]').forEach(b=>b.addEventListener('click',()=>{selectView('talk');sendMessage(b.dataset.message);}));
-function resetChat(){if(busy)return;speechInput.cancel();voicePlayer.stop();messages.length=0;messageList.replaceChildren();$('aboutPanel').hidden=true;updateIntro();input.value='';selectView('talk');input.focus();}
+function resetChat(){if(busy)return;speechInput.cancel();voicePlayer.stop();messages.length=0;messageList.replaceChildren();$('aboutPanel').hidden=true;updateIntro();dailyEmotion.update();input.value='';selectView('talk');input.focus();}
 $('newChat').addEventListener('click',resetChat);$('clearChat').addEventListener('click',resetChat);
 function selectView(view){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
@@ -468,12 +544,14 @@ document.querySelectorAll('[data-mood]').forEach(b=>b.addEventListener('click',(
  document.querySelectorAll('[data-mood]').forEach(x=>x.classList.remove('selected'));
  b.classList.add('selected');
  const mood=b.dataset.mood;
+ dailyEmotion.setMood(mood);
  $('moodCaption').textContent=mood+' — 지금의 마음을 알아차렸어요.';
  $('careMoodCurrent').textContent='지금의 마음: '+mood;
 }));
 /* In-session self-care tools. Notes are never persisted or uploaded unless
    the visitor explicitly presses the button to discuss them in chat. */
 $('careTalkButton').addEventListener('click',()=>{selectView('talk');input.focus();});
+$('emotionTalk').addEventListener('click',()=>{selectView('talk');input.focus();});
 $('careMoodButton').addEventListener('click',()=>selectView('mood'));
 $('careBreathButton').addEventListener('click',()=>{
   selectView('mood');
