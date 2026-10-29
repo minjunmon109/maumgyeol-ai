@@ -205,7 +205,7 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .more-menu-content button>span:first-child{font-size:22px;min-width:28px}.more-menu-content strong{font-size:12px;display:block;font-weight:650}.more-menu-content small{font-size:10px;display:block;color:#9aab94;margin-top:4px}
 @media(max-width:650px){.more-menu{margin-left:auto;margin-right:4px}.more-menu summary{font-size:10px;padding:7px 9px}.more-menu-content{right:-43px;max-width:87vw}}
 
-.fallback-note{margin:6px 0 10px 43px;color:#849781;font-size:10px;line-height:1.6;font-weight:500}</style></head>
+</style></head>
 <body><div id="callOverlay" class="call-overlay" hidden role="dialog" aria-modal="true" aria-label="마음결 음성 대화">
 <div class="call-dialog">
   <div class="call-top"><span>마음결 · 음성 대화</span><button type="button" id="callClose" aria-label="음성 통화 종료">✕</button></div>
@@ -591,9 +591,9 @@ const signatureTools=(()=>{
       if(streamError||!answer)throw Error(streamError||'답변을 받지 못했습니다.');
       pending.querySelector('span').textContent=answer;
       practiceHistory.push({role:'assistant',content:answer});
-      if(practiceSource==='basic-listening')$feature('practiceStatus').textContent='기본 연습 대화로 전환했습니다. 이 답변은 생성형 모델이 만든 것이 아닙니다.';
+
       $feature('practiceReflect').disabled=false;
-      if(practiceSource!=='basic-listening')$feature('practiceStatus').textContent='이 답변은 실제 상대방의 반응을 예측한 것이 아니라 가상의 연습 예시입니다.';
+      $feature('practiceStatus').textContent='이 답변은 실제 상대방의 반응을 예측한 것이 아니라 가상의 연습 예시입니다.';
     }catch(err){
       pending.querySelector('span').textContent='응답이 원활하지 않았습니다. 다시 시도해 주세요.';
       $feature('practiceStatus').textContent=err.message||'연습 중 오류가 발생했습니다.';
@@ -988,7 +988,7 @@ const callInterface=(()=>{
     if(!active)return;
     waiting=false;
     latest.textContent='마음결: '+text;
-    setState(source==='basic-listening'?'기본 경청 모드로 이어서 이야기해요.':'마음결이 답하고 있어요…');
+    setState('마음결이 생성형 답변을 읽고 있어요…');
     refresh();
     const started=voicePlayer.speak(text,()=>{
       if(!active)return;
@@ -1094,13 +1094,8 @@ async function sendMessage(content){
     }else voicePlayer.onFinal(answer);
     pending.wrapper.remove();messages.push({role:'assistant',content:answer,at:Date.now()});
     if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
-    const shown=addMessage('assistant',answer,{safety});
-    if(source==='basic-listening'){
-      const mode=document.createElement('div');
-      mode.className='fallback-note';
-      mode.textContent='기본 경청 답변 · 무료 모델 한도 초과 시 자동 전환';
-      shown.wrapper.append(mode);
-    }
+    addMessage('assistant',answer,{safety});
+
   }catch(e){
     voicePlayer.stop();
     if(fromCall)callInterface.fail(e.message);
