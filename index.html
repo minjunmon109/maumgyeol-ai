@@ -105,8 +105,35 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .emotion-footer{border-top:1px solid #e4e9df;margin-top:18px;padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}.emotion-footer span{font-size:10px;line-height:1.8;color:#9cac95}.emotion-footer button{border:1px solid #d8e5d3;color:#668461;background:#f5f8f1;cursor:pointer;border-radius:18px;padding:8px 11px;font-size:10px;white-space:nowrap}
 .topbar-emotion{font-size:20px;margin-left:auto}.topbar-emotion+.topbar-care{margin-left:4px}
 @media(max-width:650px){.emotion-daily{padding:16px}.emotion-bars{grid-template-columns:1fr}.emotion-face{font-size:34px;width:62px;height:62px}.emotion-main strong{font-size:14px}.emotion-heading h3{font-size:21px}.emotion-footer{flex-wrap:wrap}.topbar-emotion{display:none}}
+
+.account-gate{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:16px;background:rgba(44,61,48,.72);backdrop-filter:blur(7px)}
+.account-gate[hidden]{display:none}.account-gate-card{width:min(100%,465px);max-height:95dvh;overflow-y:auto;background:#fffefb;border:1px solid #e3ebdf;border-radius:21px;padding:30px 28px;color:#62775c;text-align:center;box-shadow:0 20px 80px rgba(24,42,27,.18)}
+.account-gate-mark{font-size:39px;color:#72916a}.account-gate h2{font:400 27px/1.5 Georgia,'Nanum Myeongjo',serif;color:#496a4d;margin:13px 0}
+.account-gate p{font-size:12px;line-height:2;color:#84957e}.account-consent{display:flex;align-items:flex-start;gap:9px;text-align:left;border:1px solid #dce7d7;padding:13px;background:#f6f9f3;border-radius:12px;margin:18px 0;color:#6d8267;font-size:11px;line-height:1.7}
+.account-consent input{margin-top:4px;flex:0 0 auto}.google-login{width:100%;background:#678963;color:white;padding:14px;border:0;border-radius:11px;font-weight:700;cursor:pointer;font-size:13px}
+.google-login:disabled{opacity:.5;cursor:not-allowed}.account-status{min-height:24px}.account-gate small{display:block;color:#9ca79a;font-size:10px;line-height:1.8;margin-top:12px}
+.account-history{margin-top:18px;padding:23px;background:#fffefa;border:1px solid #e0e8dc;border-radius:16px}.account-history-header{display:flex;align-items:flex-start;justify-content:space-between;gap:9px}
+.account-history h3{font:400 24px/1.5 Georgia,'Nanum Myeongjo',serif;color:#557053;margin:8px 0}.account-history p{font-size:11px;color:#90a089;line-height:1.8;margin:0}
+.account-name{font-size:10px;color:#789073;max-width:145px;overflow-wrap:anywhere}
+.history-controls{margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.history-controls label{display:flex;align-items:center;gap:6px;color:#617b5e;font-size:12px}.history-controls button,.account-actions button{border:1px solid #d7e3d1;background:#f2f6ef;color:#637e5e;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:11px}
+.history-sessions{margin-top:12px;border-radius:10px;border:1px solid #e4ebdf;min-height:65px;padding:12px;background:#fbfcf9;color:#81957e;font-size:11px;line-height:1.8}
+.history-session{display:flex;align-items:center;gap:8px;padding:8px 5px;border-bottom:1px solid #e7eee3}.history-session:last-child{border:0}
+.history-session .history-open{flex:1;min-width:0;background:transparent;border:0;text-align:left;display:flex;flex-direction:column;gap:4px;color:#587552;cursor:pointer;min-height:45px}
+.history-session .history-open strong{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-session .history-open small{font-size:10px;color:#9dab98}.history-session .history-delete{border:0;background:transparent;color:#a47e70;cursor:pointer;font-size:11px}
+.account-actions{display:flex;gap:8px;margin:13px 0}.account-actions button:first-child{color:#a06c64;background:#faf3ef;border-color:#eee0d8}
+.account-history .history-privacy{font-size:10px;margin-top:10px;color:#a0ac9a}
+@media(max-width:620px){.account-gate-card{padding:23px 19px}.account-gate h2{font-size:24px}.account-history{padding:17px}.account-name{max-width:100px}}
 </style></head>
-<body>
+<body><div id="accountGate" class="account-gate" role="dialog" aria-modal="true" aria-labelledby="accountGateTitle" hidden>
+<div class="account-gate-card"><div class="account-gate-mark">♧</div><div class="care-eyebrow">마음결 · 나만의 대화 공간</div><h2 id="accountGateTitle">마음결을 시작하려면<br>구글 계정으로 로그인해 주세요.</h2>
+<p>처음 로그인하면 계정을 만들고, 다음 방문에도 같은 구글 계정으로 이어서 이용할 수 있습니다.</p>
+<label class="account-consent"><input id="accountDataConsent" type="checkbox"/> <span>선택한 상담 대화와 감정 표현을 Firebase에 저장하고 계정에서 불러오는 기능 및 개인정보 안내를 확인했습니다. 저장한 대화는 계정에서 삭제할 수 있습니다.</span></label>
+<button id="googleLoginButton" class="google-login" type="button" disabled>구글로 회원가입 및 로그인</button>
+<p id="accountStatus" class="account-status" role="status" aria-live="polite">로그인 서비스를 확인하고 있습니다.</p>
+<small>마음결은 자격을 가진 심리상담사가 아닌 자동 대화 서비스입니다. 대화 생성 시 외부 모델 제공업체로 내용이 전송될 수 있으며, 비밀유지를 보장하지 않습니다.</small>
+</div></div>
 <div class="shell">
 <aside class="sidebar" aria-label="주 메뉴">
   <div class="brand"><svg viewBox="0 0 50 50" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M25 42V17M25 29C12 28 9 20 11 9c12 0 17 7 14 20Zm0-4C39 23 43 16 41 7 29 7 23 15 25 25Z"/><path d="M15 44h22"/></svg><div><strong>마음결</strong><small>MAEUMGYEOL</small></div></div>
@@ -139,7 +166,14 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
     <div id="thoughtPreview" class="thought-preview" hidden aria-live="polite"></div>
     <p class="thought-disclosure">정리한 내용은 자동으로 전송되지 않습니다. ‘마음결과 이어서 이야기하기’를 직접 선택할 때만 대화 요청에 포함됩니다.</p>
   </div>
-  <div class="care-support"><span>도움이 급하게 필요할 때</span><p>자신이나 다른 사람의 안전이 위협받는다면 대화 서비스보다 가까운 사람과 응급 지원을 먼저 이용하세요. 긴급 신고 119·112, 자살예방상담전화 109</p></div>
+  <section class="account-history" aria-labelledby="historyTitle">
+  <div class="account-history-header"><div><span class="care-eyebrow">나의 상담 기록</span><h3 id="historyTitle">지난 마음 이야기</h3><p>계정을 연결하면 지난 대화를 보관하고 다시 이어갈 수 있습니다.</p></div><span id="accountName" class="account-name">계정 확인 중</span></div>
+  <div class="history-controls"><label><input id="historySaving" type="checkbox" checked/> 이 대화 저장</label><button id="historyRefresh" type="button">목록 새로고침</button></div>
+  <div id="historySessions" class="history-sessions" aria-live="polite">구글 로그인과 Firebase 설정이 완료되면 기록을 표시할 수 있어요.</div>
+  <div class="account-actions"><button id="deleteAllHistory" type="button">저장한 기록 모두 삭제</button><button id="accountLogout" type="button">로그아웃</button></div>
+  <p class="history-privacy">저장에 동의한 대화만 계정별로 보관합니다. Firebase 프로젝트 관리자에게는 저장 데이터에 대한 접근 권한이 있을 수 있습니다. 상담 기록을 타인과 공유하지 마세요.</p>
+</section>
+<div class="care-support"><span>도움이 급하게 필요할 때</span><p>자신이나 다른 사람의 안전이 위협받는다면 대화 서비스보다 가까운 사람과 응급 지원을 먼저 이용하세요. 긴급 신고 119·112, 자살예방상담전화 109</p></div>
 </section>
 <section id="aboutPanel" class="about-panel" hidden><div class="eyebrow">마음결을 소개합니다</div><h2>이야기가 잠시 쉬어갈 수 있도록.</h2><p>마음결은 경청과 감정 반영을 바탕으로 고민과 관계, 스트레스에 관해 함께 정리하는 심리상담 대화 공간입니다.</p><p>마음결은 자동 대화 서비스이며 실제 상담사나 의료전문가의 진단·치료·응급 대응을 대신하지 않습니다. 위급한 상황에서는 119 또는 자살예방상담전화 109로 연락해 주세요.</p></section>
 <div class="composer-area"><div class="composer-head"><span>지금 어떤 방식으로 함께할까요?</span><small id="readyText">당신의 속도로 이야기해요</small></div><div class="adaptive-mode" aria-label="상담 방식 자동 조절"><span class="adaptive-mark">✧</span><div><strong>마음결이 대화의 흐름에 맞춰 함께해요</strong><small>필요할 때는 들어주고, 마음을 정리하고, 방법을 함께 찾아요.</small></div><span class="adaptive-auto">자동</span></div><label id="externalConsentWrap" hidden style="display:none;align-items:flex-start;gap:8px;padding:10px 12px;margin:8px 0 5px;background:#f1f5ed;border-radius:9px;font-size:11px;line-height:1.7;color:#5b7356"><input id="externalConsent" type="checkbox" style="margin-top:3px;flex:0 0 auto" /><span>외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 모델 파일 다운로드나 별도 API 키는 필요하지 않습니다. 제공업체의 데이터 보존·학습 정책은 다를 수 있으며 비밀유지가 보장되지 않습니다. 개인정보·실제 상담 기록 등 민감한 내용은 입력하지 마세요.</span></label><form id="chatForm" class="composer"><label class="sr-only" for="messageBox">하고 싶은 이야기</label><textarea id="messageBox" rows="2" maxlength="2400" placeholder="무슨 일이 있었는지, 지금 어떤 마음인지 편하게 적어 주세요."></textarea><div class="composer-footer"><span>✧ &nbsp; 편하게 말씀해 주세요</span><button type="button" id="micButton" class="mic-button" aria-label="음성으로 말하기" aria-pressed="false" title="마이크를 누르고 말하면 자동 전송됩니다">🎙 말하기</button><button type="button" id="voiceToggle" class="voice-toggle" aria-label="자동 음성 끄기" aria-pressed="true" title="답변을 자동으로 읽어줍니다">🔊 음성 켜짐</button><button type="submit" id="sendButton" title="메시지 보내기" aria-label="메시지 보내기">↑</button></div></form><p id="speechHint" class="speech-hint" role="status" aria-live="polite">마이크를 누르고 한국어로 말하면, 글자로 바뀌어 자동 전송됩니다. 음성 인식은 브라우저 서비스에서 처리될 수 있어요.</p><p class="disclaimer">마음결은 AI 기반 자동 대화 서비스이며 전문 심리상담사의 상담·진단·치료를 대신하지 않습니다. 대화는 현재 서버에 저장하지 않지만 답변을 위해 외부 제공업체로 전송되며, 완전한 비밀유지를 보장하지 않습니다.</p></div>
@@ -151,6 +185,7 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 </div></div>
 <script>'use strict';
 const $=id=>document.getElementById(id);
+window.maumgyeolAccount={required:false,ready:false,getToken:async()=>null,saveMessage:()=>Promise.resolve(),newConversation:()=>{},signOut:()=>{}};
 const messages=[];
 let busy=false,breathInterval=null,breathElapsed=0;
 const intro=$('intro'),suggestions=$('suggestions'),messageList=$('messages'),input=$('messageBox'),send=$('sendButton');
@@ -470,14 +505,23 @@ async function sendMessage(content){
   if(!$('externalConsentWrap').hidden&&!$('externalConsent').checked){
     alert('외부 대화 처리 서비스에 전송하는 데 동의한 뒤 이용해 주세요.');return;
   }
+  if(window.maumgyeolAccount.required){
+    const token=await window.maumgyeolAccount.getToken();
+    if(!token){$('accountGate').hidden=false;return;}
+  }
   voicePlayer.startReply();
   busy=true;send.disabled=true;speechInput.update();input.value='';input.style.height='auto';
   $('readyText').textContent='말씀을 듣고 있어요';
   messages.push({role:'user',content:text,at:Date.now()});addMessage('user',text);updateIntro();dailyEmotion.update();
+  if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
   const pending=addMessage('assistant','마음결이 답변을 준비하고 있어요…',{pending:true});
   let completed=false;
   try{
-    const req={method:'POST',headers:{'Content-Type':'application/json'},
+    const headers={'Content-Type':'application/json'};
+    if(window.maumgyeolAccount.required){
+      headers['Authorization']='Bearer '+await window.maumgyeolAccount.getToken();
+    }
+    const req={method:'POST',headers,
       body:JSON.stringify({messages,mode:"auto",external_consent:$('externalConsent').checked})};
     const res=await fetch('/api/chat/stream',req);
     if(!res.ok){const err=await res.json().catch(()=>({}));
@@ -506,7 +550,8 @@ async function sendMessage(content){
     if(!answer)throw Error('응답을 완성하지 못했습니다. 다시 시도해 주세요.');
     completed=true;
     voicePlayer.onFinal(answer);
-    pending.wrapper.remove();messages.push({role:'assistant',content:answer});
+    pending.wrapper.remove();messages.push({role:'assistant',content:answer,at:Date.now()});
+    if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
     addMessage('assistant',answer,{safety});
   }catch(e){
     voicePlayer.stop();
@@ -521,7 +566,7 @@ $('chatForm').addEventListener('submit',e=>{e.preventDefault();sendMessage(input
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendMessage(input.value);}});
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,180)+'px';});
 document.querySelectorAll('[data-message]').forEach(b=>b.addEventListener('click',()=>{selectView('talk');sendMessage(b.dataset.message);}));
-function resetChat(){if(busy)return;speechInput.cancel();voicePlayer.stop();messages.length=0;messageList.replaceChildren();$('aboutPanel').hidden=true;updateIntro();dailyEmotion.update();input.value='';selectView('talk');input.focus();}
+function resetChat(){if(busy)return;speechInput.cancel();voicePlayer.stop();messages.length=0;messageList.replaceChildren();$('aboutPanel').hidden=true;updateIntro();dailyEmotion.update();input.value='';selectView('talk');window.maumgyeolAccount.newConversation();input.focus();}
 $('newChat').addEventListener('click',resetChat);$('clearChat').addEventListener('click',resetChat);
 function selectView(view){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
@@ -595,6 +640,21 @@ $('thoughtClear').addEventListener('click',()=>{
 
 function stopBreathing(){if(breathInterval)clearInterval(breathInterval);breathInterval=null;$('breathRing').classList.remove('running');$('breathText').innerHTML='♧<br><span>들이쉬고, 내쉬고</span>';$('breathButton').innerHTML='1분 호흡 시작하기 <span>→</span>';}
 $('breathButton').addEventListener('click',()=>{if(breathInterval){stopBreathing();return;}breathElapsed=0;$('breathRing').classList.add('running');$('breathButton').textContent='호흡 멈추기';const tick=()=>{const t=breathElapsed%14;const label=t<4?'천천히 들이쉬기':t<8?'잠시 머무르기':'부드럽게 내쉬기';$('breathText').textContent=label;$('breathLegend').textContent=`남은 시간 ${Math.max(0,60-breathElapsed)}초`;if(breathElapsed++>=60){stopBreathing();$('breathLegend').textContent='1분의 쉼을 마쳤어요.';}};tick();breathInterval=setInterval(tick,1000);});
+window.maumgyeolUI={
+  getMessages(){return messages.map(m=>({role:m.role,content:m.content,at:m.at||Date.now()}));},
+  loadMessages(history){
+    if(busy)return;
+    speechInput.cancel();voicePlayer.stop();
+    messages.splice(0,messages.length,...history.map(m=>({role:m.role,content:m.content,at:m.at||Date.now()})));
+    messageList.replaceChildren();messages.forEach(m=>addMessage(m.role,m.content));
+    updateIntro();dailyEmotion.update();selectView('talk');
+  },
+  clearDisplay(){
+    if(busy)return;
+    speechInput.cancel();voicePlayer.stop();messages.length=0;messageList.replaceChildren();updateIntro();dailyEmotion.update();
+  },
+  emotion(){return dailyEmotion.tally();}
+};
 fetch('/api/status').then(r=>r.json()).then(data=>{
   const outside=!!data.external;const ready=!!data.ready;const local= data.provider==='kilo-anonymous';
   const wrap=$('externalConsentWrap');wrap.hidden=!outside;wrap.style.display=outside?'flex':'none';
@@ -603,4 +663,4 @@ fetch('/api/status').then(r=>r.json()).then(data=>{
   $('status').title=local?'자동 대화 시스템 연결 상태입니다. 실제 상담·치료를 대신하지 않습니다.':(outside?'외부 제공업체 연결 상태입니다.':'AI 연결을 준비 중입니다.');
   if(local){wrap.querySelector('span').textContent='외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 별도 다운로드나 API 키는 필요하지 않습니다. 제공업체가 내용을 보관하거나 활용할 수 있으니 개인정보나 실제 상담 사례는 입력하지 마세요. 전문 상담·치료를 대신하지 않습니다.';}
 }).catch(()=>{$('status').textContent='● 서버 확인 필요';$('status').className='status offline';});
-</script></body></html>
+</script><script type="module" src="/firebase-client.js"></script></body></html>
