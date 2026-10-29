@@ -1,0 +1,24 @@
+name: Check website and GPU training scripts
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cpu-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile without importing GPU libraries
+        run: |
+          python -m py_compile app.py counselor_policy.py training/build_synthetic.py training/train_qlora.py training/serve_gpu.py
+      - name: Generate only synthetic trial examples
+        run: |
+          python training/build_synthetic.py
+          python -c 'import json,pathlib; d=pathlib.Path("training/data/train.jsonl"); v=pathlib.Path("training/data/val.jsonl"); a=[json.loads(s) for s in d.read_text().splitlines()]; b=[json.loads(s) for s in v.read_text().splitlines()]; assert len(a)>=40 and len(b)>=10; assert all("prompt" in x and "completion" in x for x in a+b);print("Dataset validation OK")'
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
