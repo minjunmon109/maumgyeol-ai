@@ -33,6 +33,7 @@ FIREBASE_APP_ID = os.getenv("FIREBASE_APP_ID","").strip()
 FIREBASE_AUTH_DOMAIN = os.getenv("FIREBASE_AUTH_DOMAIN","").strip()
 FIREBASE_ENABLED = bool(FIREBASE_PROJECT_ID and FIREBASE_API_KEY and FIREBASE_APP_ID and FIREBASE_AUTH_DOMAIN)
 FIREBASE_JS = Path(__file__).with_name("firebase-client.js")
+LOCAL_WORKER_JS = Path(__file__).with_name("local-model-worker.js")
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
@@ -270,6 +271,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
         if p=="/firebase-client.js":
             return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
+        if p=="/local-model-worker.js":
+            return self.send(200,LOCAL_WORKER_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/api/status":
             ready = bool(MODEL_URL) and model_available()
             if MODEL_PROVIDER == "ollama":
