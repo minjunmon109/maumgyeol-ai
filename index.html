@@ -435,7 +435,7 @@ const localAI=(()=>{
       }));
       const stream=await model.chat.completions.create({
         messages:[{role:"system",content:rolePrompt},...compact],
-        temperature:0.65,top_p:0.85,max_tokens:240,stream:true,enable_thinking:false
+        temperature:0.65,top_p:0.85,max_tokens:240,stream:true,extra_body:{enable_thinking:false}
       });
       let raw="";
       for await(const chunk of stream){
