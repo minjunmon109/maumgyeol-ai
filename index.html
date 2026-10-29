@@ -228,6 +228,32 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 }
 
 
+
+/* Forest & paper: coherent visual finish, without external font requests. */
+:root{--deep:#203d35;--green:#315b4b;--body:#465c51;--muted:#65776a;--line:#dedfd5;--bg:#faf8f2}
+.shell{background:var(--bg)}
+.sidebar{background:#203d35;color:#d5dfd4;border-right:0}
+.brand,.brand svg,.brand strong{color:#f4f0df}.brand small{color:#b6c7b5}
+.new-chat{background:#e8e2ce;color:#263f34;border-radius:12px;font-weight:600;box-shadow:0 6px 20px #10291e33}
+.nav-item{color:#bacbbc;min-height:49px}.nav-item.active{background:#365347;color:#fff7e4}.nav-item:hover{background:#304d41;color:#fff7e4}
+.history,.sidebar-bottom,.sidebar-bottom>span{color:#b5c6b7}.sidebar-bottom{border-color:#486051}.text-button{color:#e1cbaa}
+.topbar{background:#faf8f2;color:#536958}.privacy{color:#64735f}
+.main{background:radial-gradient(ellipse at 50% 0%,#e9eadd80,transparent 65%)}
+.intro{padding-top:38px}.botanical svg{width:146px;height:130px}.intro .eyebrow{font-size:10px;letter-spacing:3px;color:#627a61}
+.intro h1{font-family:Georgia,'Batang','AppleMyungjo',serif;font-size:clamp(29px,2.8vw,43px);line-height:1.55;letter-spacing:-1.5px;color:#243f34}
+.hero-accent{color:#647c60}.intro>p{color:#6c7969}.intro-caption{background:#f3f0e5;border-color:#e3dfcf;color:#6b7662}
+.suggestion{background:#fffdf7;border-radius:16px;border-color:#dedfd4;box-shadow:0 4px 18px #253a2805;min-height:92px}
+.suggestion b{color:#344f40}.suggestion small{color:#6c7968}.suggestion:hover{background:#f5f3e9;border-color:#9cac8e;transform:translateY(-3px)}
+.composer{border-color:#b9c5b2;box-shadow:0 12px 36px #334c3010;background:#fffef9;border-radius:19px}.composer:focus-within{border-color:#587659;box-shadow:0 0 0 3px #58765915}
+.composer-footer button[type=submit]{background:#315b4b}.composer textarea::placeholder{color:#758370}
+.rightbar{background:#f0eee4;border-color:#e1ddcf}.breathing-panel{background:#faf8f0;border:1px solid #dedaca;border-radius:22px;padding:24px 16px}.breathing-panel h2{color:#324e3c;font-family:Georgia,'Batang',serif}
+.note-panel{background:#e8e2d0;border:1px solid #ddd4bd;border-radius:16px}.right-eyebrow,.section-eyebrow,.breathing-panel p,.breath-note,.right-footer{color:#66735f}
+.msg.assistant .bubble{background:#fffdf6;border-color:#e1dfd2;border-radius:18px 18px 18px 4px}.msg.user .bubble{background:#e0e8d8;border-radius:18px 18px 4px 18px;color:#304a37}
+button,summary,a,textarea{touch-action:manipulation}button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid #a88549;outline-offset:4px}
+.reading-toggle{border:1px solid #d4d9c9;border-radius:20px;padding:8px 12px;background:#f4f1e6;color:#425c46;font-size:11px;white-space:nowrap;margin-right:10px}
+body.reading-mode .bubble{font-size:17px;line-height:2}body.reading-mode .composer textarea{font-size:17px}
+@media(min-width:1400px){.shell{grid-template-columns:250px minmax(0,1fr)}.panes{grid-template-columns:minmax(0,1fr) 310px}.main{padding-left:8%;padding-right:8%}}
+@media(max-width:620px){.sidebar{background:#203d35}.intro{padding-top:26px}.intro h1{font-size:28px}.botanical svg{width:115px;height:102px}.suggestion{min-height:88px}.reading-toggle{padding:8px;margin-right:0;font-size:10px}.topbar{gap:5px}.rightbar{padding:18px}.composer-area{background:#faf8f2}.breathing-panel{padding:22px}.intro-caption{line-height:1.8}}
 </style></head>
 <body><div id="callOverlay" class="call-overlay" hidden role="dialog" aria-modal="true" aria-label="마음결 음성 대화">
 <div class="call-dialog">
@@ -262,7 +288,7 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
   <button type="button" data-more-feature="practice"><span>💬</span><span><strong>현실 대화 연습</strong><small>친구·가족·연인과 대화 연습</small></span></button>
   <button type="button" data-more-feature="timeline"><span>🌱</span><span><strong>감정 변화 기록</strong><small>날짜별 마음 표현 살펴보기</small></span></button>
   <button type="button" data-more-section="care"><span>✦</span><span><strong>통합 마음 관리</strong><small>호흡·기분·고민 정리 노트</small></span></button>
-</div></details><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
+</div></details><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><button type="button" class="reading-toggle" id="readingToggle" aria-pressed="false">큰 글씨</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
 <div class="panes">
 <main class="main" id="mainContent">
 <section id="intro" class="intro"><div class="botanical" aria-hidden="true"><svg viewBox="0 0 180 160"><circle cx="86" cy="75" r="62" fill="#eeefe2"/><circle cx="127" cy="30" r="22" fill="#f0cbaa"/><path d="M83 132v-81" stroke="#667f61" stroke-width="2.2"/><path d="M83 94C53 91 46 72 49 59c29 0 37 19 34 35M83 99c30-10 34-31 31-42C90 62 79 81 83 99" fill="#799471"/><path d="M83 70c-24-7-29-28-22-38 18 5 25 20 22 38" fill="#b1c1a2"/><path d="M60 133h50" stroke="#647b5d"/><path d="M20 126c43 20 96 20 142-2" stroke="#d5dac9" fill="none"/></svg></div><div class="eyebrow">마음이 쉬어 가는 대화</div><h1>혼자 안고 있던 마음,<br><span class="hero-accent">여기서 천천히 이야기해요.</span></h1><p>고민을 잘 설명하지 않아도 괜찮아요.<br>지금 어떤 일이 마음에 남아 있는지부터 나눠 주세요.</p><div class="intro-caption"><span>✦</span> 서두르지 않는 경청 · 감정과 생각 정리 · 나에게 맞는 작은 선택</div></section>
@@ -1250,10 +1276,11 @@ window.maumgyeolUI={
   },
   emotion(){return dailyEmotion.tally();}
 };
+$('readingToggle').addEventListener('click',()=>{const on=document.body.classList.toggle('reading-mode');$('readingToggle').setAttribute('aria-pressed',String(on));});
 fetch('/api/status').then(r=>r.json()).then(data=>{
   const outside=!!data.external;const ready=!!data.ready;const local= data.provider==='kilo-anonymous';
   const wrap=$('externalConsentWrap');wrap.hidden=!outside;wrap.style.display=outside?'flex':'none';
-  $('status').textContent=local?(ready?'● 대화 준비됨':(data.model_status==='checking'?'● 대화 준비 중':'● 연결 확인 필요')):(outside?(ready?'● 대화 준비됨':'● 연결 확인 필요'):'● 대화 준비 중');
+  $('status').textContent=local?(ready?'● 대화 준비됨':(data.model_status==='checking'?'● 대화 준비 중':'● 연결 확인 필요')):(ready?'● 대화 준비됨':'● 연결 확인 필요');
   $('status').className='status '+(ready?'online':'offline');
   $('status').title=local?'자동 대화 시스템 연결 상태입니다. 실제 상담·치료를 대신하지 않습니다.':(outside?'외부 제공업체 연결 상태입니다.':'AI 연결을 준비 중입니다.');
   if(local){wrap.querySelector('span').textContent='외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 별도 다운로드나 API 키는 필요하지 않습니다. 제공업체가 내용을 보관하거나 활용할 수 있으니 개인정보나 실제 상담 사례는 입력하지 마세요. 전문 상담·치료를 대신하지 않습니다.';}

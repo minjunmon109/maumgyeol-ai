@@ -30,13 +30,13 @@ ASKING_FOR_ADVICE = re.compile(r"어떻게\s*(?:해야|할까|하면)|조언|해
 
 
 def normalize_mode(value):
-    return value if isinstance(value,str) and (value=="auto" or value in MODES) else "auto"
+    return value if isinstance(value,str) and (value=="auto" or value in MODES) else ("auto" if value is None else "reflect")
 
 
 def effective_mode(mode, last_user_text):
     if ASKING_FOR_ADVICE.search(last_user_text or ""):
         return "steps"
-    if re.search(r"그냥\s*(?:들어|얘기|말하고)|조언\s*(?:말고|하지)", last_user_text or ""):
+    if re.search(r"그냥\s*(?:내\s*)?(?:들어|얘기|말하고)|조언\s*(?:말고|하지)", last_user_text or ""):
         return "listen"
     selected=normalize_mode(mode)
     if selected!="auto":
@@ -44,9 +44,9 @@ def effective_mode(mode, last_user_text):
     # One integrated counseling mode. Listen first, explore thoughts and
     # emotions when helpful; give concrete options only when asked.
     spoken=(last_user_text or "").strip()
-    if ACKNOWLEDGMENT.search(spoken):
+    if ACKNOWLEDGMENT.search(spoken) or re.fullmatch(r"(?:응|네)\s+그런\s*것\s*같아[.!~ ]*", spoken):
         return "listen"
-    if re.search(r"그냥\s*(?:들어|얘기|말하고)|조언\s*(?:말고|하지)|위로\s*(?:해|해줘)|털어놓", spoken):
+    if re.search(r"그냥\s*(?:내\s*)?(?:들어|얘기|말하고)|조언\s*(?:말고|하지)|위로\s*(?:해|해줘)|털어놓", spoken):
         return "listen"
     return "reflect"
 
