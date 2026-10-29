@@ -21,10 +21,14 @@ ROOT = Path(__file__).resolve().parent
 
 
 def sha256(path):
-    block = hashlib.sha256()
-    with Path(path).open("rb") as fp:
-        for part in iter(lambda: fp.read(1024 * 1024), b""):
-            block.update(part)
+    block=hashlib.sha256()
+    files=input_files(path)
+    for file in files:
+        if len(files)>1:
+            block.update(file.name.encode("utf-8") + b"\0")
+        with file.open("rb") as fp:
+            for part in iter(lambda:fp.read(1024*1024),b""):
+                block.update(part)
     return block.hexdigest()
 
 
