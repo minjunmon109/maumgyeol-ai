@@ -1,0 +1,28 @@
+name: Browser counselor guardrail regression tests
+on:
+  pull_request:
+    paths:
+      - index.html
+      - app.py
+      - chat-guardrails.js
+      - tests/browser_guardrails.test.cjs
+      - tests/browser_conversation_benchmark.test.cjs
+      - .github/workflows/browser-guardrails.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-guardrails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and deterministic safety tests
+        run: |
+          node --check chat-guardrails.js
+          node --test tests/*.test.cjs
+      - name: Server Python syntax
+        run: python -m py_compile app.py counselor_policy.py conversation_logic.py
