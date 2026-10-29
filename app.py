@@ -6,6 +6,7 @@ from urllib.parse import urlsplit, parse_qs
 from urllib.request import Request, urlopen
 from collections import defaultdict
 from pathlib import Path
+from counselor_policy import COUNSELOR_PROMPT, safety_response, demo_reply, safe_model_output
 
 PORT = int(os.getenv("PORT", "10000"))
 ACCESS_CODE = os.environ["ACCESS_CODE"]
@@ -17,10 +18,7 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai")
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
-PROMPT = """당신은 한국어 정서지원 도우미 '마음결'입니다. 인간 심리상담사 또는 석사학위 보유자라고 주장하지 않습니다.
-사용자의 감정과 사실을 정확히 반영하고 과도한 확신, 진단, 처방, 의존 유도를 피합니다. 상황에 맞게 짧고 자연스럽게
-2~5문장으로 대화하고, 질문은 필요할 때 하나만 합니다. CBT, ACT, 동기강화상담 등의 기술은 안전하게 사용하되
-전문가의 평가나 치료를 대체한다고 말하지 않습니다. 위험 신호가 있으면 119/112/109와 주변 사람의 도움을 안내합니다."""
+PROMPT = COUNSELOR_PROMPT
 LOGIN = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>마음결 · 비공개 공간</title><style>*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#f3f4ee;color:#506447;font-family:-apple-system,'Apple SD Gothic Neo',sans-serif}.card{width:min(92vw,430px);padding:45px 32px;text-align:center;background:#fcfbf7;border:1px solid #e4e8dc;border-radius:19px}.logo{font-size:50px;color:#7f9779}.eyebrow{font-size:10px;letter-spacing:3px;color:#91a18b}h1{font-family:Georgia,serif;font-weight:400;line-height:1.5;font-size:30px}p{font-size:13px;line-height:2.1;color:#82917c}input,button{width:100%;height:49px;border-radius:8px;font:inherit}input{border:1px solid #dfe6da;padding:0 13px;background:white}button{margin-top:13px;border:0;background:#697f61;color:#fff}small{display:block;margin-top:22px;color:#9da697;font-size:11px}</style></head><body><main class="card"><div class="logo">♧</div><div class="eyebrow">YOUR QUIET SPACE</div><h1>어떤 마음이든,<br>여기서는 괜찮아요.</h1><p>현재 비공개 시범 운영 중입니다.<br>초대 코드를 입력해 입장해 주세요.</p><form method="post" action="/unlock"><input name="code" type="password" required autocomplete="off" placeholder="초대 코드"><button>마음결 입장하기 →</button></form><small>AI 정서지원 체험이며 실제 상담·치료의 대체가 아닙니다.</small></main></body></html>"""
 
 def token():
@@ -68,9 +66,11 @@ def demo(message):
 
 def answer(messages):
     text=messages[-1]["content"]
-    if risk(text):
-        return ("지금 무엇보다 안전이 중요합니다. 스스로를 다치게 할 위험이 있다면 119나 112에 연락하고, 가까운 믿을 만한 사람에게 함께 있어 달라고 부탁해 주세요. 한국의 자살예방상담전화 109에서도 도움받을 수 있어요. 지금 안전한 곳에 계신가요?", "safety-guidance","concern")
-    if not MODEL_URL: return demo(text),"guided-demo","none"
+    safe=safety_response(text)
+    if safe:
+        return safe[0], "safety-guidance", safe[1]
+    if not MODEL_URL:
+        return demo_reply(messages), "guided-demo", "none"
     payload = {"model":MODEL_NAME,"messages":[{"role":"system","content":PROMPT}]+messages[-16:],"stream":False}
     if MODEL_PROVIDER == "ollama":
         payload["options"]={"temperature":0.65}
@@ -84,7 +84,7 @@ def answer(messages):
     s=(data.get("message") or {}).get("content") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")
     if not isinstance(s,str) or not s.strip():raise ValueError("Empty model response")
     s=re.sub(r"<think>[\s\S]*?</think>","",s,flags=re.I).strip()
-    return s[:8000],"model","none"
+    return safe_model_output(s[:8000]),"model","none"
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args): pass
@@ -105,7 +105,7 @@ class Handler(BaseHTTPRequestHandler):
         if p in ("/","/index.html"):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
         if p=="/api/status":
-            return self.send(200,{"ready":bool(MODEL_URL),"mode":"model-configured" if MODEL_URL else "guided-demo"})
+            return self.send(200,{"ready":False,"configured":bool(MODEL_URL),"mode":"model-configured" if MODEL_URL else "guided-demo","model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
     def do_POST(self):
