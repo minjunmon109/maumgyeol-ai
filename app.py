@@ -163,6 +163,38 @@ UPSTREAM_ERRORS = {
 def upstream_message(status):
     return UPSTREAM_ERRORS.get(status,"외부 AI 제공업체에 요청하지 못했습니다. 관리자에게 문의해 주세요.")
 
+def check_stream_probe():
+    """Check if the anonymous provider actually streams without user data."""
+    payload={"model":MODEL_NAME,
+             "messages":[{"role":"user","content":"안녕하세요. 자연스러운 한국어로 짧게 인사해 주세요."}],
+             "stream":True,"max_tokens":95}
+    started=time.monotonic()
+    try:
+        req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode("utf-8"),
+                    {"Content-Type":"application/json","Accept":"text/event-stream"},method="POST")
+        with urlopen(req,timeout=24) as resp:
+            for line in resp:
+                if not line.startswith(b"data:"):
+                    continue
+                part=line[5:].strip()
+                if part==b"[DONE]":
+                    break
+                try:
+                    body=json.loads(part)
+                    delta=(body.get("choices") or [{}])[0].get("delta") or {}
+                    text=delta.get("content")
+                except (ValueError,IndexError,AttributeError,KeyError):
+                    continue
+                if isinstance(text,str) and text.strip():
+                    print("KEYLESS_STREAM_PROBE first_ms="+str(int((time.monotonic()-started)*1000)),flush=True)
+                    return
+        print("KEYLESS_STREAM_PROBE no_content",flush=True)
+    except HTTPError as err:
+        print("KEYLESS_STREAM_PROBE http_"+str(err.code),flush=True)
+    except Exception as err:
+        print("KEYLESS_STREAM_PROBE "+type(err).__name__,flush=True)
+
+
 def check_anonymous_large_model():
     # Probe using synthetic non-sensitive text. Keyless provider is separate
     # from the user's OpenRouter API key and never receives that key.
@@ -186,6 +218,7 @@ def check_anonymous_large_model():
                 MODEL_NAME=candidate
                 MODEL_PROBE_STATUS="ok"
                 print("KEYLESS_LLM_PROBE ok "+candidate,flush=True)
+                threading.Thread(target=check_stream_probe,daemon=True).start()
                 return
             print("KEYLESS_LLM_PROBE empty_response "+candidate,flush=True)
         except HTTPError as error:
