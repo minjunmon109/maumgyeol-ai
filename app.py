@@ -91,7 +91,7 @@ def demo(message):
         return "관계에서 겪는 어려움은 쉽게 정리되지 않을 수 있어요. 어떤 일이 있었는지 편안하게 들려주실래요?"
     return "아직 AI 모델이 연결되지 않아 안내 체험으로 답변하고 있어요. 이야기를 하나씩 정리해 볼까요? 가장 먼저 떠오르는 일이 무엇인가요?"
 
-def build_chat_payload(messages, stream=False, mode="listen"):
+def build_chat_payload(messages, stream=False, mode="auto"):
     # Use a compact recent context; less prompt processing and output reduces
     # latency, but free upstream latency is outside our control.
     history=[{"role":m["role"],"content":m["content"][-1000:]} for m in messages[-8:]]
@@ -106,7 +106,7 @@ def build_chat_payload(messages, stream=False, mode="listen"):
     return payload
 
 
-def answer(messages, mode="listen"):
+def answer(messages, mode="auto"):
     text=messages[-1]["content"]
     safe=safety_response(text)
     if safe:
@@ -127,14 +127,14 @@ def answer(messages, mode="listen"):
     return refine_reply(safe_model_output(output[:5000]),messages,mode),"model","none"
 
 
-def model_stream_request(messages,mode="listen"):
+def model_stream_request(messages,mode="auto"):
     payload=build_chat_payload(messages,stream=True,mode=mode)
     headers={"Content-Type":"application/json","Accept":"text/event-stream"}
     if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
     return Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
 
 
-def korean_preview(raw,messages=None,mode="listen"):
+def korean_preview(raw,messages=None,mode="auto"):
     # Exclude unclosed reasoning blocks, and only render meaningful Korean.
     raw=re.sub(r"(?is)<think>.*?(?:</think>|$)","",raw)
     raw=re.sub(r"(?is)<analysis>.*?(?:</analysis>|$)","",raw)
@@ -334,7 +334,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
-    def stream_chat(self,messages,mode="listen"):
+    def stream_chat(self,messages,mode="auto"):
         started=time.monotonic()
         safe=safety_response(messages[-1]["content"])
         if safe:
@@ -451,7 +451,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body=json.loads(raw)
             messages=body.get("messages")
-            mode=normalize_mode(body.get("mode","listen"))
+            mode=normalize_mode(body.get("mode","auto"))
             if FREE_EXTERNAL and body.get("external_consent") is not True:
                 return self.send(403,{"error":"외부 AI 전송 동의가 필요합니다. 동의란을 확인해 주세요."})
             if not isinstance(messages,list) or not 1<=len(messages)<=32:raise ValueError()
@@ -461,7 +461,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(400,{"error":"메시지 형식을 확인해 주세요."})
         if p=="/api/chat/stream":return self.stream_chat(messages,mode)
         started=time.monotonic()
-        try: reply,source,safety=answer(messages)
+        try: reply,source,safety=answer(messages,mode)
         except HTTPError as exc:
             print("FREE_QWEN_CHAT", "upstream_http_"+str(exc.code),flush=True)
             return self.send(503,{"error":upstream_message(exc.code),"upstream_status":exc.code})
