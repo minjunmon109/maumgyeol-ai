@@ -133,6 +133,23 @@ def check_free_model_startup():
     if MODEL_NAME != fallback and MODEL_NAME.endswith(":free"):
         candidates.append(fallback)
     headers={"Content-Type":"application/json","Authorization":"Bearer "+MODEL_API_KEY}
+    try:
+        catalog_req=Request("https://openrouter.ai/api/v1/models/user?limit=1000",headers={"Authorization":"Bearer "+MODEL_API_KEY})
+        with urlopen(catalog_req,timeout=15) as catalog_resp:
+            catalog=json.load(catalog_resp)
+        allowed_ids=[
+            m.get("id","") for m in catalog.get("data",[])
+            if isinstance(m,dict) and isinstance(m.get("id"),str)
+        ]
+        free_qwen=[m for m in allowed_ids if m.startswith("qwen/") and m.endswith(":free")]
+        print("FREE_QWEN_CATALOG allowed_free_qwen_count="+str(len(free_qwen)),flush=True)
+        for m in free_qwen:
+            if m not in candidates and len(candidates)<3:
+                candidates.append(m)
+    except HTTPError as e:
+        print("FREE_QWEN_CATALOG upstream_http_"+str(e.code),flush=True)
+    except Exception as e:
+        print("FREE_QWEN_CATALOG unavailable_"+type(e).__name__,flush=True)
     for candidate in candidates:
         if not candidate.endswith(":free"):
             break
