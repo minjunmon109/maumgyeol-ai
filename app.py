@@ -35,7 +35,7 @@ KEYLESS_BACKEND = os.getenv("KEYLESS_BACKEND", "kilo").strip().lower() == "kilo"
 if KEYLESS_BACKEND:
     MODEL_URL = "https://api.kilo.ai/api/gateway/chat/completions"
     MODEL_API_KEY = ""
-    MODEL_NAME = "z-ai/glm-5:free"
+    MODEL_NAME = "dots-studio/dots-3-note-preview:free"
     MODEL_PROVIDER = "openai"
     FREE_EXTERNAL = True
 MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("openrouter" if FREE_EXTERNAL else "custom")
@@ -99,23 +99,24 @@ def answer(messages):
         return demo_reply(messages), "guided-demo", "none"
     if KEYLESS_BACKEND and MODEL_PROBE_STATUS!="ok":
         raise RuntimeError("Anonymous free model is not currently available")
-    payload = {"model":MODEL_NAME,"messages":[{"role":"system","content":PROMPT}]+messages[-16:],"stream":False}
+    context=[{"role":m["role"],"content":m["content"][-1200:]} for m in messages[-10:]]
+    payload = {"model":MODEL_NAME,"messages":[{"role":"system","content":PROMPT}]+context,"stream":False}
     if MODEL_PROVIDER == "ollama":
         payload["options"]={"temperature":0.65}
     else:
-        payload["temperature"]=0.65
-        payload["max_tokens"]=640
+        payload["temperature"]=0.4
+        payload["max_tokens"]=420
         if FREE_EXTERNAL and not KEYLESS_BACKEND:
             # Never relax the account's original OpenRouter privacy filtering.
             payload["provider"]={"data_collection":"deny"}
         if KEYLESS_BACKEND:
             # External model provider is informed in the UI; data is sent only
             # after explicit opt-in. No downloads and no user API credentials.
-            payload["max_tokens"]=900
+            payload["max_tokens"]=420
     headers={"Content-Type":"application/json"}
     if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
     req=Request(MODEL_URL, json.dumps(payload, ensure_ascii=False).encode(), headers, method="POST")
-    with urlopen(req, timeout=42) as f: data=json.load(f)
+    with urlopen(req, timeout=28) as f: data=json.load(f)
     s=(data.get("message") or {}).get("content") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")
     if not isinstance(s,str) or not s.strip():raise ValueError("Empty model response")
     s=re.sub(r"<think>[\s\S]*?</think>","",s,flags=re.I).strip()
@@ -145,11 +146,11 @@ def check_anonymous_large_model():
     # Probe using synthetic non-sensitive text. Keyless provider is separate
     # from the user's OpenRouter API key and never receives that key.
     global MODEL_PROBE_STATUS, MODEL_NAME
-    candidates=("z-ai/glm-5:free","minimax/minimax-m2.1:free","dots-studio/dots-3-note-preview:free")
+    candidates=("dots-studio/dots-3-note-preview:free","z-ai/glm-5:free","minimax/minimax-m2.1:free")
     for candidate in candidates:
         payload={"model":candidate,
-                 "messages":[{"role":"user","content":"한국어로 짧게 '안녕하세요'라고 인사해 주세요."}],
-                 "max_tokens":350,"stream":False}
+                 "messages":[{"role":"system","content":"심리상담 대화 원칙으로 사용자의 말에 공감하며 한국어로만 두 문장을 답하세요. 영어는 쓰지 마세요."},{"role":"user","content":"요즘 직장에서 실수를 해서 속상해요."}],
+                 "max_tokens":400,"temperature":0.4,"stream":False}
         try:
             req=Request(MODEL_URL,
                         json.dumps(payload,ensure_ascii=False).encode("utf-8"),
@@ -304,6 +305,7 @@ class Handler(BaseHTTPRequestHandler):
             if messages[-1]["role"]!="user" or not messages[-1]["content"].strip():raise ValueError()
         except (ValueError,TypeError,AttributeError):
             return self.send(400,{"error":"메시지 형식을 확인해 주세요."})
+        started=time.monotonic()
         try: reply,source,safety=answer(messages)
         except HTTPError as exc:
             print("FREE_QWEN_CHAT", "upstream_http_"+str(exc.code),flush=True)
@@ -314,6 +316,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             print("FREE_QWEN_CHAT", "model_error_"+type(exc).__name__,flush=True)
             return self.send(503,{"error":"외부 AI 응답을 처리하지 못했습니다. 무료 모델이 잠시 불안정할 수 있습니다."})
+        if source=="model": print("MAUMGYEOL_REPLY elapsed_ms="+str(int((time.monotonic()-started)*1000)),flush=True)
         return self.send(200,{"reply":reply,"source":source,"safety":safety})
 
 if __name__=="__main__":
