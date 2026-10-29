@@ -179,7 +179,7 @@ def answer(messages, mode="auto", rehearsal=None):
     if safe:
         return safe[0], "safety-guidance", safe[1]
     if not MODEL_URL:
-        return demo_reply(messages), "guided-demo", "none"
+        return basic_reply(messages,mode,rehearsal)
     if not model_available():
         return basic_reply(messages,mode,rehearsal)
     payload=build_chat_payload(messages,mode=mode,rehearsal=rehearsal)
@@ -201,7 +201,8 @@ def answer(messages, mode="auto", rehearsal=None):
         return basic_reply(messages,mode,rehearsal)
     output=(data.get("message") or {}).get("content") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")
     if not isinstance(output,str) or not output.strip():
-        raise ValueError("Empty model response")
+        mark_free_model_unavailable()
+        return basic_reply(messages,mode,rehearsal)
     return (safe_model_output(output[:5000]) if rehearsal else refine_reply(safe_model_output(output[:5000]),messages,mode)),"model","none"
 
 
@@ -480,13 +481,7 @@ class Handler(BaseHTTPRequestHandler):
             self.emit_stream({"type":"final","reply":reply,"safety":safe[1]})
             return
         if not MODEL_URL:
-            reply=demo_reply(messages)
-            self.send_response(200)
-            self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
-            self.send_header("Cache-Control","no-store, no-transform")
-            self.end_headers()
-            self.emit_stream({"type":"final","reply":reply,"safety":"none"})
-            return
+            return self.stream_basic_reply(messages,mode,rehearsal)
         if not model_available():
             return self.stream_basic_reply(messages,mode,rehearsal)
         try:
