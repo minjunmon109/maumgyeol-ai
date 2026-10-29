@@ -19,7 +19,7 @@ AUTH_SECRET = os.environ["AUTH_SECRET"]
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "browser").strip()
 MODEL_URL = os.getenv("MODEL_URL", "").strip()
 MODEL_API_KEY = os.getenv("MODEL_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen3-1.7B-q4f16_1-MLC").strip()
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC").strip()
 KEYLESS_BACKEND = False
 FREE_EXTERNAL = bool(MODEL_URL and urlsplit(MODEL_URL).hostname not in ("localhost","127.0.0.1","::1",None))
 MODEL_SOURCE = "browser" if not MODEL_URL else ("ollama" if MODEL_PROVIDER == "ollama" else "custom")
