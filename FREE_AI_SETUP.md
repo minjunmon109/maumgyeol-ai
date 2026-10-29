@@ -1,17 +1,32 @@
-# API 키 없는 로컬 AI
+# 마음결: API 키 없는 브라우저 자체 생성형 AI
 
-기본 모델은 **Qwen3 8B**, 실행기는 **Ollama**입니다. 익명 외부 무료 API 자동 연결을 제거했습니다. 더 가벼운 기기에서는 `qwen3:4b`를 선택하세요. 한국어 상담 품질의 우월성은 아직 비교 검증하지 않았습니다.
+### AI 구조
 
-1. https://ollama.com 에서 Ollama를 설치하고 실행합니다.
-2. `ollama pull qwen3:8b`로 모델을 내려받습니다(수 GB 다운로드).
-3. 서버 환경에 `ACCESS_CODE`와 충분히 긴 무작위 `AUTH_SECRET`을 설정합니다.
-4. `python app.py`를 실행하고 http://localhost:10000 에 접속합니다.
+- **하나의 모델:** `Qwen3-1.7B-q4f16_1-MLC`
+- **실행 엔진:** `@mlc-ai/web-llm@0.2.86`, WebGPU
+- **추론 위치:** 사용자 브라우저(iOS Safari/데스크톱)
+- **AI API:** 사용하지 않음. Kilo, OpenRouter, Ollama 서버 불필요
+- **모델 다운로드:** 최초 1회 Hugging Face와 CDN을 통해 대용량 파일 다운로드. 캐시가 제거되면 다시 다운로드 필요
+- **요청 횟수:** 외부 생성형 AI API에 의한 횟수 제한이 없음. 다만 기기 자원/속도 및 다운로드 서버의 트래픽 정책으로 인해 무제한 성능을 보장하는 것은 아님
 
-기본값: `MODEL_PROVIDER=ollama`, `MODEL_NAME=qwen3:8b`, `MODEL_URL=http://127.0.0.1:11434/api/chat`.
-4B 사용 시 `ollama pull qwen3:4b` 후 `MODEL_NAME=qwen3:4b`를 설정하세요.
+### 모바일 사용
 
-API 키·호출 요금·제공업체의 일일 호출 할당량은 없습니다. 컴퓨터 메모리, 전력, 처리 속도, 동시 요청 수의 물리적 한계는 있습니다. 앱의 과도한 요청 방지 제한은 유지됩니다. 모델 다운로드 후 추론에 외부 모델 서비스는 필요하지 않습니다. Firebase를 구성했다면 로그인·기록 동기화는 별도의 외부 서비스입니다.
+1. iOS 26 이상 Safari 또는 WebGPU 지원 브라우저로 HTTPS 사이트를 엽니다.
+2. 와이파이·충분한 저장 공간을 확보하고 **기기 AI 시작 · 모델 다운로드** 버튼을 누릅니다.
+3. WebLLM 로딩 진행 상태가 표시된 뒤 **대화 준비됨**이 나타나면 대화합니다.
+4. 모델 요구 GPU 메모리는 약 2.04GB입니다. 실제 iOS GPU/탭 메모리 상황에 따라 실행 실패할 수 있습니다. 모델 성능은 대형 클라우드 AI보다 낮을 수 있습니다.
 
-**Render 배포 주의:** Render 서버의 localhost는 사용자의 PC가 아닙니다. 기존 무료 웹 서버만으로 8B 모델이 동작한다고 보장할 수 없습니다. 모델을 실행할 충분한 자원이 있는 동일 머신에서 앱을 실행하거나 접근 가능한 별도 모델 서버를 구성해야 합니다. Ollama 포트를 인터넷에 그대로 공개하지 마세요. 기존 `MODEL_URL`, `MODEL_NAME`, `MODEL_PROVIDER` 환경 변수가 있으면 기본값보다 우선합니다. 기존 OPENROUTER_API_KEY와 KEYLESS_BACKEND 자동 선택은 제거되었습니다.
+### 서버 배포
 
-공식 참고: https://ollama.com/library/qwen3:8b · https://docs.ollama.com/api/chat
+기존처럼 `python app.py`로 정적 사이트를 서빙합니다. Render 무료 서버에는 모델을 탑재하지 않습니다. 브라우저에서 추론하므로 Render GPU가 필요 없습니다.
+
+배포 비밀 환경변수: `ACCESS_CODE` (사이트 출입 코드), `AUTH_SECRET` (랜덤한 세션 인증 서명키). 이 값은 공개 저장소에 올리지 마세요. 생성형 AI API 키는 필요 없습니다.
+
+### 주의
+
+- 이 서비스는 정서지원 시제품이며 임상적으로 검증된 상담 AI가 아닙니다.
+- 위기 시에는 한국의 119, 112, 자살예방상담전화 109 등 실제 도움을 우선하세요.
+- 브라우저 음성 인식과 Firebase 로그인/기록 기능은 별도로 개인정보를 전송할 수 있으므로 각 서비스 정책을 확인하세요.
+- iOS Safari WebGPU 호환 여부와 메모리 부족 문제는 실제 기기 테스트가 필요합니다.
+
+자료: [WebLLM README](https://github.com/mlc-ai/web-llm#readme), [WebLLM 모델 설정](https://github.com/mlc-ai/web-llm/blob/main/src/config.ts).
