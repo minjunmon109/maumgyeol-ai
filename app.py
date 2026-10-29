@@ -28,6 +28,7 @@ if OPENROUTER_API_KEY and not MODEL_URL:
     MODEL_NAME = OPENROUTER_MODEL
     MODEL_PROVIDER = "openai"
 FREE_EXTERNAL = bool(OPENROUTER_API_KEY and MODEL_URL == "https://openrouter.ai/api/v1/chat/completions")
+MODEL_PROBE_STATUS = "checking" if FREE_EXTERNAL else "not_configured"
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
@@ -125,7 +126,7 @@ def upstream_message(status):
 def check_free_model_startup():
     # Only non-sensitive synthetic greetings are sent. Probe at most two free
     # Qwen-family models with identical privacy filtering.
-    global MODEL_NAME
+    global MODEL_NAME, MODEL_PROBE_STATUS
     if not FREE_EXTERNAL:
         return
     candidates=[MODEL_NAME]
@@ -168,6 +169,7 @@ def check_free_model_startup():
             success=bool(choices and choices[0].get("message",{}).get("content"))
             if success:
                 MODEL_NAME=candidate
+                MODEL_PROBE_STATUS="ok"
                 print("FREE_QWEN_PROBE ok "+candidate,flush=True)
                 return
             print("FREE_QWEN_PROBE empty_response "+candidate,flush=True)
@@ -197,6 +199,7 @@ def check_free_model_startup():
         except Exception as exc:
             print("FREE_QWEN_PROBE response_error_"+type(exc).__name__,flush=True)
             return
+    MODEL_PROBE_STATUS="unavailable"
     print("FREE_QWEN_PROBE all_eligible_qwen_providers_failed",flush=True)
 
 class Handler(BaseHTTPRequestHandler):
@@ -218,7 +221,7 @@ class Handler(BaseHTTPRequestHandler):
         if p in ("/","/index.html"):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
         if p=="/api/status":
-            return self.send(200,{"ready":False,"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"mode":"model-configured" if MODEL_URL else "guided-demo","model":MODEL_NAME if MODEL_URL else None})
+            return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"mode":"model-configured" if MODEL_URL else "guided-demo","model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
     def do_POST(self):
