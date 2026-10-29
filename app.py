@@ -384,7 +384,7 @@ class Handler(BaseHTTPRequestHandler):
             except (BrokenPipeError,ConnectionResetError): pass
 
     def emit_stream(self,item):
-        self.wfile.write((json.dumps(item,ensure_ascii=False)+"\\n").encode("utf-8"))
+        self.wfile.write((json.dumps(item,ensure_ascii=False)+"\n").encode("utf-8"))
         self.wfile.flush()
 
     def do_POST(self):
