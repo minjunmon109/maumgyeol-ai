@@ -15,10 +15,15 @@ jobs:
           python-version: '3.12'
       - name: Compile without importing GPU libraries
         run: |
-          python -m py_compile app.py counselor_policy.py training/build_synthetic.py training/train_qlora.py training/serve_gpu.py
+          python -m py_compile app.py counselor_policy.py training/build_synthetic.py training/train_qlora.py training/serve_gpu.py training/counselor_data.py training/train_cpu_lora.py training/generate_cpu_eval.py training/safety_eval.py training/promote_browser.py training/merge_cpu_adapter.py
       - name: Generate only synthetic trial examples
         run: |
           python training/build_synthetic.py
           python -c 'import json,pathlib; d=pathlib.Path("training/data/train.jsonl"); v=pathlib.Path("training/data/val.jsonl"); a=[json.loads(s) for s in d.read_text().splitlines()]; b=[json.loads(s) for s in v.read_text().splitlines()]; assert len(a)>=40 and len(b)>=10; assert all("prompt" in x and "completion" in x for x in a+b);print("Dataset validation OK")'
+      - name: Validate CPU trainer without GPU and verify benchmark fixtures
+        run: |
+          python training/train_cpu_lora.py --train training/data/train.jsonl --val training/data/val.jsonl --dry-run
+          python training/safety_eval.py --cases-only > /tmp/maumgyeol_case_list.json
+          python -c 'import json; x=json.load(open("/tmp/maumgyeol_case_list.json")); assert len(x)>=15'
       - name: Run unit tests
         run: python -m unittest discover -s tests -p 'test_*.py'
