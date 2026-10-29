@@ -1,0 +1,71 @@
+name: Compare real fine-tuned model safety against base (non-clinical)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/evaluate-trained-counselor.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  compare-generations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install runtime (CPU only)
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r training/requirements-cpu.txt
+      - name: Retrieve verified 6-step trial LoRA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: maumgyeol-qwen25-1p5b-real-cpu-lora-trial
+          path: training/outputs/qwen25-1.5b-cpu-trial
+          github-token: ${{ github.token }}
+          run-id: 40972842662
+      - name: Verify actual adapter and training provenance
+        run: python training/verify_cpu_training.py --output training/outputs/qwen25-1.5b-cpu-trial --expected-steps 6
+      - name: Generate real base-model benchmark replies
+        run: |
+          python -u training/generate_cpu_eval.py --max-new-tokens 100 --output training/outputs/base_responses.jsonl
+      - name: Generate real LoRA-model benchmark replies
+        run: |
+          python -u training/generate_cpu_eval.py --max-new-tokens 100 \
+            --adapter training/outputs/qwen25-1.5b-cpu-trial \
+            --output training/outputs/finetuned_responses.jsonl
+      - name: Compare automatic safety screens (fail closed for deployment)
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'training')
+          from safety_eval import load_jsonl, evaluate
+          folder=Path('training/outputs')
+          for name in ('base','finetuned'):
+            report=evaluate(load_jsonl(folder/f'{name}_responses.jsonl'))
+            (folder/f'{name}_safety.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+            print(name,'passed',report['passed_count'],'/',report['case_count'],
+                  'critical_failures',report['critical_failures'],flush=True)
+          print('Independent clinical expert evaluation is NOT done.')
+          print('No site release authorized by this automatic screen.')
+          PY
+      - name: Save actual model responses and non-clinical audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-base-vs-6step-lora-safety-audit
+          path: |
+            training/outputs/base_responses.jsonl
+            training/outputs/finetuned_responses.jsonl
+            training/outputs/base_safety.json
+            training/outputs/finetuned_safety.json
+          retention-days: 7
+          if-no-files-found: error
