@@ -35,7 +35,7 @@ KEYLESS_BACKEND = os.getenv("KEYLESS_BACKEND", "kilo").strip().lower() == "kilo"
 if KEYLESS_BACKEND:
     MODEL_URL = "https://api.kilo.ai/api/gateway/chat/completions"
     MODEL_API_KEY = ""
-    MODEL_NAME = "dots-studio/dots-3-note-preview:free"
+    MODEL_NAME = "poolside/laguna-s-2.1:free"
     MODEL_PROVIDER = "openai"
     FREE_EXTERNAL = True
 MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("openrouter" if FREE_EXTERNAL else "custom")
@@ -199,7 +199,7 @@ def check_anonymous_large_model():
     # Probe using synthetic non-sensitive text. Keyless provider is separate
     # from the user's OpenRouter API key and never receives that key.
     global MODEL_PROBE_STATUS, MODEL_NAME
-    candidates=("dots-studio/dots-3-note-preview:free","z-ai/glm-5:free","minimax/minimax-m2.1:free")
+    candidates=("poolside/laguna-s-2.1:free","kilo-auto/free","cohere/north-mini-code:free")
     for candidate in candidates:
         payload={"model":candidate,
                  "messages":[{"role":"system","content":"심리상담 대화 원칙으로 사용자의 말에 공감하며 한국어로만 두 문장을 답하세요. 영어는 쓰지 마세요."},{"role":"user","content":"요즘 직장에서 실수를 해서 속상해요."}],
@@ -214,7 +214,7 @@ def check_anonymous_large_model():
             choice=(result.get("choices") or [{}])[0]
             msg=choice.get("message") or {}
             output=msg.get("content")
-            if isinstance(output,str) and output.strip():
+            if isinstance(output,str) and re.search(r"[가-힣]",output) and len(output.strip())>14:
                 MODEL_NAME=candidate
                 MODEL_PROBE_STATUS="ok"
                 print("KEYLESS_LLM_PROBE ok "+candidate,flush=True)
@@ -413,8 +413,19 @@ class Handler(BaseHTTPRequestHandler):
             pass
         except Exception as exc:
             print("MAUMGYEOL_STREAM error_"+type(exc).__name__,flush=True)
-            try: self.emit_stream({"type":"error","error":"답변을 받지 못했습니다. 다시 말씀해 주세요."})
-            except (BrokenPipeError,ConnectionResetError): pass
+            try:
+                # Some free providers advertise streaming but return only
+                # reasoning/empty deltas. Retry with a normal completion.
+                reply,source,safety=answer(messages)
+                if source=="model" and reply:
+                    self.emit_stream({"type":"final","reply":reply,"safety":safety})
+                    print("MAUMGYEOL_STREAM fallback_nonstream_ok",flush=True)
+                else:
+                    self.emit_stream({"type":"error","error":"무료 대화 서비스가 현재 응답하지 않습니다."})
+            except Exception as retry_error:
+                print("MAUMGYEOL_STREAM fallback_error_"+type(retry_error).__name__,flush=True)
+                try:self.emit_stream({"type":"error","error":"무료 대화 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요."})
+                except (BrokenPipeError,ConnectionResetError):pass
 
     def emit_stream(self,item):
         self.wfile.write((json.dumps(item,ensure_ascii=False)+"\n").encode("utf-8"))
