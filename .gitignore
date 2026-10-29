@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+.venv/
+training/data/*.jsonl
+training/outputs/
+outputs/
+*.safetensors
+*.gguf
+*.bin
+*.pt
+*.ckpt
+*.pth
+training_manifest.json
+.cache/
