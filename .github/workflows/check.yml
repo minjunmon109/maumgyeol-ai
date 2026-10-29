@@ -22,7 +22,8 @@ jobs:
           python -c 'import json,pathlib; d=pathlib.Path("training/data/train.jsonl"); v=pathlib.Path("training/data/val.jsonl"); a=[json.loads(s) for s in d.read_text().splitlines()]; b=[json.loads(s) for s in v.read_text().splitlines()]; assert len(a)>=40 and len(b)>=10; assert all("prompt" in x and "completion" in x for x in a+b);print("Dataset validation OK")'
       - name: Validate CPU trainer without GPU and verify benchmark fixtures
         run: |
-          python training/train_cpu_lora.py --train training/data/train.jsonl --val training/data/val.jsonl --dry-run
+          python tests/create_ci_dataset.py --output /tmp/maumgyeol-cpu-fixture
+          python training/train_cpu_lora.py --train /tmp/maumgyeol-cpu-fixture/train.jsonl --val /tmp/maumgyeol-cpu-fixture/val.jsonl --dry-run
           python training/safety_eval.py --cases-only > /tmp/maumgyeol_case_list.json
           python -c 'import json; x=json.load(open("/tmp/maumgyeol_case_list.json")); assert len(x)>=15'
       - name: Run unit tests
