@@ -370,6 +370,268 @@ const dailyEmotion=(()=>{
  return {setMood,update,tally,dateKey};
 })();
 
+
+/* Main tools operate on the current visitor's own words. History is supplied
+   only from already authenticated Firebase sessions when available. The
+   direction and timeline summaries never call an external classification API. */
+const signatureTools=(()=>{
+  const $feature=id=>document.getElementById(id);
+  let stored=[],selected='direction',practiceBusy=false,practiceHistory=[],practiceScenario='',practicePartner='friend';
+  const topicDefinitions=[
+    {name:'친구·관계 고민',emoji:'🤝',re:/친구|연락|관계|사이|멀리|외로|외롭|우정|서운|만나|보고\s*싶|소통/g,guide:'연락하고 싶은 마음과 부담되는 마음을 나눠 이야기해 볼 수 있어요.'},
+    {name:'가족과의 고민',emoji:'🏡',re:/가족|엄마|아빠|부모|형제|자매|집안|가정|동생|언니|오빠/g,guide:'가족과의 상황에서 내가 바라는 경계나 소통 방식을 정리할 수 있어요.'},
+    {name:'불안·생각 정리',emoji:'🌙',re:/불안|걱정|생각|초조|두려|무서|겁|미래|불확실|신경/g,guide:'실제로 일어난 일과 아직 확실하지 않은 해석을 나눠 볼 수 있어요.'},
+    {name:'공부·일 스트레스',emoji:'📚',re:/공부|학교|시험|성적|수업|숙제|일|직장|업무|취업|학업|실수|스트레스/g,guide:'지금 내가 할 수 있는 작은 일과 잠시 미뤄도 되는 일을 구분할 수 있어요.'},
+    {name:'나 자신과 자존감',emoji:'🌱',re:/자존감|자신감|자책|내\s*탓|무가치|못난|비교|자기|스스로|잘못/g,guide:'내가 겪은 일과 나 자신의 가치를 따로 놓고 살펴볼 수 있어요.'},
+    {name:'마음의 피로',emoji:'🍃',re:/지치|피곤|힘들|버겁|우울|슬프|속상|허전|쉬고|휴식|무기력/g,guide:'지금 가장 에너지를 쓰게 하는 일부터 가볍게 살펴봐도 좋아요.'}
+  ];
+  const feelings=[
+    {name:'외로움',emoji:'🥺',re:/외롭|그립|보고\s*싶|혼자|고립|소외/g},
+    {name:'불안',emoji:'😟',re:/불안|걱정|초조|두렵|긴장|무섭|겁나/g},
+    {name:'슬픔',emoji:'😢',re:/슬프|서운|눈물|우울|속상|상처|허전/g},
+    {name:'지침',emoji:'😮‍💨',re:/지치|피곤|힘들|버겁|스트레스|무기력/g},
+    {name:'화남',emoji:'😠',re:/화나|짜증|억울|분노|열받|답답/g},
+    {name:'기쁨',emoji:'😊',re:/기쁘|즐겁|행복|설레|고마|좋아|뿌듯/g},
+    {name:'편안함',emoji:'😌',re:/편안|안심|차분|괜찮|평온|안정/g}
+  ];
+  const dateKey=at=>{
+    const d=new Date(at);
+    if(!Number.isFinite(d.valueOf()))return null;
+    return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+  };
+  function ownMessages(){
+    const seen=new Set(),raw=[];
+    for(const storedSession of stored){
+      for(const m of storedSession.messages||[]){
+        if(m&&m.role==='user'&&typeof m.content==='string')raw.push(m);
+      }
+    }
+    for(const m of messages)if(m.role==='user')raw.push(m);
+    const out=[];
+    for(const m of raw){
+      const at=Number(m.at)||Date.now();
+      const content=String(m.content||'').slice(0,2400);
+      const key=at+'|'+content;
+      if(!seen.has(key)){seen.add(key);out.push({at,content});}
+    }
+    return out.sort((a,b)=>a.at-b.at);
+  }
+  function count(re,text){return (text.match(re)||[]).length;}
+  const safePiece=text=>String(text||'').replace(/\s+/g,' ').trim().slice(0,125);
+  function chooseTab(name){
+    if(!['direction','practice','timeline'].includes(name))return;
+    selected=name;
+    for(const btn of document.querySelectorAll('[data-feature]')){
+      const active=btn.dataset.feature===name;
+      btn.classList.toggle('active',active);
+      btn.setAttribute('aria-selected',String(active));
+    }
+    for(const [tab,id] of [['direction','featureDirection'],['practice','featurePractice'],['timeline','featureTimeline']])
+      $feature(id).hidden=tab!==name;
+    refresh();
+  }
+  function drawDirection(){
+    const userMessages=ownMessages();
+    const text=userMessages.map(m=>m.content).join(' ');
+    const score=topicDefinitions.map(def=>({...def,score:count(def.re,text)}))
+      .filter(t=>t.score>0).sort((a,b)=>b.score-a.score).slice(0,4);
+    const list=$feature('directionSignals');list.replaceChildren();
+    if(!score.length){
+      list.textContent='아직 정리할 대화가 없어요. 상담 대화에서 고민을 나누면 여기에서 반복된 주제를 살펴볼 수 있어요.';
+      $feature('directionWishes').textContent='대화에서 바라는 것을 이야기하면 정리해 드려요.';
+      $feature('directionNext').textContent='지금 가장 마음에 걸리는 일을 하나부터 이야기해 보세요.';
+      return;
+    }
+    for(const t of score){
+      const item=document.createElement('div');item.className='direction-signal';
+      const name=document.createElement('strong');name.textContent=t.emoji+' '+t.name;
+      const detail=document.createElement('small');detail.textContent='관련 표현 '+t.score+'회';
+      item.append(name,detail);list.append(item);
+    }
+    const wishes=userMessages.filter(m=>/(바라|원하|필요|하고\s*싶|되었으면|됐으면|보고\s*싶|좋겠|원했)/.test(m.content)).slice(-3);
+    $feature('directionWishes').textContent=wishes.length?
+      wishes.map(m=>'“'+safePiece(m.content)+'”').join('  ·  '):
+      '아직 바라는 점을 직접 표현한 문장이 충분하지 않아요. 무엇이 달라지길 바라는지 천천히 살펴볼 수 있어요.';
+    $feature('directionNext').textContent=score[0].guide;
+  }
+  function drawTimeline(){
+    const collected=ownMessages(),byDay=new Map();
+    for(const m of collected){
+      const key=dateKey(m.at);if(!key)continue;
+      if(!byDay.has(key))byDay.set(key,[]);
+      byDay.get(key).push(m.content);
+    }
+    const root=$feature('timelineItems');root.replaceChildren();
+    if(!byDay.size){
+      $feature('timelineOverview').textContent='아직 날짜별로 정리할 대화가 없어요.';
+      const empty=document.createElement('p');empty.className='timeline-empty';
+      empty.textContent='현재 화면에서 대화를 나누면 날짜별 표현이 나타납니다. 구글 계정 저장 연결 전에는 이전 방문을 복구할 수 없어요.';
+      root.append(empty);return;
+    }
+    const days=[...byDay.keys()].sort().reverse().slice(0,45);
+    $feature('timelineOverview').textContent='기록이 있는 날 '+byDay.size+'일 · 내 이야기 '+collected.length+'개 · 표시한 날짜 최대 45일';
+    for(const key of days){
+      const lines=byDay.get(key),full=lines.join(' ');
+      const ranked=feelings.map(x=>({...x,count:count(x.re,full)})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+      const card=document.createElement('article');card.className='timeline-day';
+      const title=document.createElement('h4');title.textContent=key+'  ·  이야기 '+lines.length+'개';
+      card.append(title);
+      const tags=document.createElement('div');tags.className='timeline-tags';
+      if(ranked.length){
+        for(const t of ranked.slice(0,4)){
+          const tag=document.createElement('span');tag.className='timeline-tag';tag.textContent=t.emoji+' '+t.name+' '+t.count+'회';tags.append(tag);
+        }
+      }else{
+        const tag=document.createElement('span');tag.className='timeline-tag';tag.textContent='🌱 감정 표현 미분류';tags.append(tag);
+      }
+      card.append(tags);
+      const note=document.createElement('p');
+      note.textContent='이날 한 말 중 일부: “'+safePiece(lines[lines.length-1])+'”';
+      card.append(note);root.append(card);
+    }
+  }
+  function addPracticeLine(role,text){
+    const root=$feature('practiceTranscript');
+    if(root.querySelector('.practice-empty'))root.replaceChildren();
+    const item=document.createElement('div');
+    item.className='practice-line '+(role==='user'?'mine':'theirs');
+    const who=document.createElement('small');who.textContent=role==='user'?'나':'가상 연습 상대';
+    const body=document.createElement('span');body.textContent=text;
+    item.append(who,body);root.append(item);
+    root.scrollTop=root.scrollHeight;
+    return item;
+  }
+  function practiceReady(){
+    const consent=$('externalConsentWrap');
+    if(!consent.hidden&&!$('externalConsent').checked){
+      $feature('practiceStatus').textContent='외부 대화 모델로 전송하기 전에 대화 전송 동의가 필요합니다.';
+      $('externalConsent').focus();
+      return false;
+    }
+    if(window.maumgyeolAccount.required&&!window.maumgyeolAccount.ready){
+      $('accountGate').hidden=false;
+      $feature('practiceStatus').textContent='구글 계정 로그인 후 이용할 수 있습니다.';
+      return false;
+    }
+    return true;
+  }
+  function resetPractice(){
+    if(practiceBusy)return;
+    practiceHistory=[];practiceScenario='';
+    $feature('practiceTranscript').replaceChildren();
+    const hint=document.createElement('p');hint.className='practice-empty';
+    hint.textContent='상대와 상황을 정하고 시작하면 연습 대화가 나타납니다.';
+    $feature('practiceTranscript').append(hint);
+    $feature('practiceText').disabled=true;
+    $feature('practiceSend').disabled=true;
+    $feature('practiceReflect').disabled=true;
+    $feature('practiceStatus').textContent='연습 내용은 저장되지 않으며, 사용자 요청 시 외부 대화 모델로 전송됩니다.';
+  }
+  async function submitPractice(){
+    if(practiceBusy||!practiceScenario||!practiceReady())return;
+    const text=$feature('practiceText').value.trim();
+    if(!text)return;
+    practiceBusy=true;$feature('practiceSend').disabled=true;
+    $feature('practiceText').value='';
+    practiceHistory.push({role:'user',content:text});
+    addPracticeLine('user',text);
+    $feature('practiceStatus').textContent='가상 상대방의 답변을 생성하는 중이에요…';
+    const pending=addPracticeLine('assistant','답변을 준비하고 있어요…');
+    try{
+      const headers={'Content-Type':'application/json'};
+      if(window.maumgyeolAccount.required){
+        const token=await window.maumgyeolAccount.getToken();
+        if(!token)throw Error('로그인이 필요합니다.');
+        headers.Authorization='Bearer '+token;
+      }
+      const response=await fetch('/api/rehearsal/stream',{
+        method:'POST',headers,
+        body:JSON.stringify({
+          messages:practiceHistory.slice(-22),
+          partner:practicePartner,scenario:practiceScenario,
+          external_consent:$('externalConsent').checked
+        })
+      });
+      if(!response.ok){
+        const err=await response.json().catch(()=>({}));
+        throw Error(err.error||'연습 대화 연결이 원활하지 않습니다.');
+      }
+      if(!response.body)throw Error('이 브라우저는 실시간 응답을 표시하지 못했습니다.');
+      const reader=response.body.getReader(),decoder=new TextDecoder();
+      let buffer='',answer='',streamError='';
+      while(true){
+        const chunk=await reader.read();
+        buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});
+        const lines=buffer.split('\n');buffer=lines.pop()||'';
+        for(const line of lines){
+          if(!line.trim())continue;
+          let event;try{event=JSON.parse(line);}catch{continue;}
+          if(event.type==='preview'&&typeof event.text==='string')
+            pending.querySelector('span').textContent=event.text;
+          else if(event.type==='final')answer=String(event.reply||'');
+          else if(event.type==='error')streamError=event.error||'응답 오류';
+        }
+        if(chunk.done)break;
+      }
+      if(streamError||!answer)throw Error(streamError||'답변을 받지 못했습니다.');
+      pending.querySelector('span').textContent=answer;
+      practiceHistory.push({role:'assistant',content:answer});
+      $feature('practiceReflect').disabled=false;
+      $feature('practiceStatus').textContent='이 답변은 실제 상대방의 반응을 예측한 것이 아니라 가상의 연습 예시입니다.';
+    }catch(err){
+      pending.querySelector('span').textContent='응답이 원활하지 않았습니다. 다시 시도해 주세요.';
+      $feature('practiceStatus').textContent=err.message||'연습 중 오류가 발생했습니다.';
+      practiceHistory.pop(); // Unsuccessful user turn is not sent to later prompts.
+    }finally{practiceBusy=false;$feature('practiceSend').disabled=false;}
+  }
+  function refresh(){
+    if(selected==='direction')drawDirection();
+    if(selected==='timeline')drawTimeline();
+  }
+  document.querySelectorAll('[data-feature]').forEach(btn=>btn.addEventListener('click',()=>chooseTab(btn.dataset.feature)));
+  $feature('directionStart').addEventListener('click',()=>{
+    const score=topicDefinitions.map(def=>({...def,score:count(def.re,ownMessages().map(m=>m.content).join(' '))})).sort((a,b)=>b.score-a.score);
+    selectView('talk');
+    input.value=score[0]?.score?'최근 '+score[0].name+' 때문에 마음이 복잡해요. 이 고민을 함께 정리하고 싶어요.':'요즘 마음에 남아 있는 고민을 천천히 정리하고 싶어요.';
+    input.focus();
+  });
+  $feature('practiceBegin').addEventListener('click',()=>{
+    if(!practiceReady())return;
+    const scenario=$feature('practiceScenario').value.trim();
+    if(scenario.length<3){
+      $feature('practiceStatus').textContent='연습할 상황을 조금 더 구체적으로 입력해 주세요.';
+      return;
+    }
+    if(practiceBusy)return;
+    resetPractice();
+    practiceScenario=scenario;
+    practicePartner=$feature('practicePartner').value;
+    $feature('practiceText').disabled=false;
+    $feature('practiceSend').disabled=false;
+    $feature('practiceText').focus();
+    $feature('practiceStatus').textContent='연습을 시작했어요. 상대방에게 하고 싶은 말을 적으면 가상의 답변이 나옵니다.';
+  });
+  $feature('practiceClear').addEventListener('click',resetPractice);
+  $feature('practiceForm').addEventListener('submit',e=>{e.preventDefault();submitPractice();});
+  $feature('practiceReflect').addEventListener('click',()=>{
+    if(!practiceHistory.length)return;
+    // Draft locally; never auto-send potentially private rehearsal content.
+    const own=practiceHistory.filter(m=>m.role==='user').map(m=>m.content).slice(-3).join(' / ');
+    selectView('talk');
+    input.value=('방금 대화 연습을 했어요. 실제 상대방의 마음은 확실하지 않지만, 제가 하고 싶은 말을 차분히 정리하고 싶어요. 상황: '+practiceScenario+' 제가 연습한 말: '+own).slice(0,2300);
+    input.focus();
+  });
+  $feature('timelineContinue').addEventListener('click',()=>{selectView('talk');input.focus();});
+  return {
+    refresh,chooseTab,
+    setStoredSessions(sessions){stored=Array.isArray(sessions)?sessions.map(s=>({
+      messages:Array.isArray(s?.messages)?s.messages.slice(-64):[]
+    })).slice(0,70):[];refresh();},
+    resetPractice
+  };
+})();
+window.maumgyeolSignature=signatureTools;
+
 function scrollBottom(){requestAnimationFrame(()=>{if(messages.length) messageList.lastElementChild?.scrollIntoView({block:'end',behavior:'smooth'});});}
 function element(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!=null)el.textContent=text;return el;}
 
