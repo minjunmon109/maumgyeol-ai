@@ -103,12 +103,12 @@ def safe_model_output(text):
     """Prevent false credentials/unsafe medical assertions; deliver Korean-only text."""
     if not isinstance(text, str):
         return "말씀하신 내용을 조금 더 들려주실 수 있을까요?"
-    text = re.sub(r"<think>[\\s\\S]*?</think>", "", text, flags=re.I)
-    text = re.sub(r"(?is)\\`{3}[\\s\\S]*?\\`{3}", "", text)
+    text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.I)
+    text = re.sub(r"(?is)`{3}[\s\S]*?`{3}", "", text)
     text = text.strip()
-    if re.search(r"(?i)(나는|저는).{0,22}(석사\\s*학위|면허\\s*있는\\s*(?:심리|상담)|실제\\s*상담사|정신과\\s*의사)", text):
+    if re.search(r"(?i)(나는|저는).{0,22}(석사\s*학위|면허\s*있는\s*(?:심리|상담)|실제\s*상담사|정신과\s*의사)", text):
         return "저는 마음결의 자동 심리상담 대화 도우미이며, 실제 자격을 가진 상담사가 아닙니다. 어떤 이야기를 나누고 싶으세요?"
-    if re.search(r"(?i)확실히\\s*(?:우울증|조현병|양극성|adhd)|(?:약|복용량).{0,12}(두\\s*배|늘리세요|끊으세요)", text):
+    if re.search(r"(?i)확실히\s*(?:우울증|조현병|양극성|adhd)|(?:약|복용량).{0,12}(두\s*배|늘리세요|끊으세요)", text):
         return "대화만으로 질환을 확정하거나 약물 복용을 조정할 수는 없습니다. 관련 내용은 자격 있는 전문가에게 확인해 주세요."
 
     # Replace common foreign expressions without changing the user's meaning.
@@ -131,18 +131,18 @@ def safe_model_output(text):
     for english, korean in dictionary.items():
         text = re.sub(r"(?i)(?<![A-Za-z])" + re.escape(english) + r"(?![A-Za-z])", korean, text)
     # Do not expose mixed English sentences or hidden reasoning to the user.
-    text = re.sub(r"[A-Za-z]+(?:['’\\-][A-Za-z]+)*", "", text)
-    text = re.sub(r"[\\u0370-\\u03ff\\u0400-\\u04ff]+", "", text)
-    text = re.sub(r"[\\u3040-\\u30ff\\u4e00-\\u9fff]+", "", text)
-    text = re.sub(r"[\\t ]+", " ", text)
-    text = re.sub(r" *([,.;!?])", r"\\1", text)
-    text = re.sub(r"([.!?])(?:\\s*[.!?])+", r"\\1", text)
-    text = re.sub(r"(?m)^\\s*[-#*]+\\s*$", "", text)
-    text = re.sub(r"\\n{3,}", "\\n\\n", text).strip(" ,;:/\\n\\t")
+    text = re.sub(r"[A-Za-z]+(?:['’\-][A-Za-z]+)*", "", text)
+    text = re.sub(r"[\u0370-\u03ff\u0400-\u04ff]+", "", text)
+    text = re.sub(r"[\u3040-\u30ff\u4e00-\u9fff]+", "", text)
+    text = re.sub(r"[\t ]+", " ", text)
+    text = re.sub(r" *([,.;!?])", r"\1", text)
+    text = re.sub(r"([.!?])(?:\s*[.!?])+", r"\1", text)
+    text = re.sub(r"(?m)^\s*[-#*]+\s*$", "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip(" ,;:/\n\t")
     if not re.search(r"[가-힣]", text):
         return "이야기를 충분히 이해하지 못했어요. 지금 가장 마음에 걸리는 부분을 조금만 더 들려주실 수 있을까요?"
     if len(text) > 650:
         cut=text[:650]
-        boundaries=list(re.finditer(r"[.!?。]\\s*",cut))
+        boundaries=list(re.finditer(r"[.!?。]\s*",cut))
         text=cut[:boundaries[-1].end()].strip() if boundaries and boundaries[-1].end()>180 else cut.rsplit(" ",1)[0].strip()+"…"
     return text
