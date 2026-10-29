@@ -279,6 +279,7 @@ def check_anonymous_large_model():
     # Probe using synthetic non-sensitive text. Keyless provider is separate
     # from the user's OpenRouter API key and never receives that key.
     global MODEL_PROBE_STATUS, MODEL_NAME
+    retry_seconds=240
     candidates=("poolside/laguna-s-2.1:free","kilo-auto/free","cohere/north-mini-code:free")
     for candidate in candidates:
         payload={"model":candidate,
@@ -303,10 +304,19 @@ def check_anonymous_large_model():
             print("KEYLESS_LLM_PROBE empty_response "+candidate,flush=True)
         except HTTPError as error:
             print("KEYLESS_LLM_PROBE http_"+str(error.code)+" "+candidate,flush=True)
+            if error.code==429:
+                mark_free_model_unavailable(error)
+                retry_seconds=900
+                break
         except Exception as error:
             print("KEYLESS_LLM_PROBE "+type(error).__name__+" "+candidate,flush=True)
     MODEL_PROBE_STATUS="unavailable"
-    print("KEYLESS_LLM_PROBE all_unavailable",flush=True)
+    print("KEYLESS_LLM_PROBE all_unavailable; continue locally",flush=True)
+    # Automatically re-check free availability using only a synthetic prompt.
+    # Never repeatedly probe a gateway whose IP limit was exhausted.
+    retry=threading.Timer(retry_seconds,check_anonymous_large_model)
+    retry.daemon=True
+    retry.start()
 
 
 def check_free_model_startup():
