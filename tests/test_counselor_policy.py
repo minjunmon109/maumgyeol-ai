@@ -1,7 +1,7 @@
 """Minimal non-clinical guardrail tests for the Maumgyeol conversation policy."""
 import unittest
 from counselor_policy import safety_response, demo_reply, safe_model_output, COUNSELOR_PROMPT
-from conversation_logic import normalize_mode, conversation_instruction, refine_reply
+from conversation_logic import normalize_mode, effective_mode, conversation_instruction, refine_reply
 
 class CounselorPolicyTests(unittest.TestCase):
     def test_self_harm(self):
@@ -47,6 +47,18 @@ class CounselorPolicyTests(unittest.TestCase):
     def test_contextual_instruction(self):
         history=[{"role":"user","content":"그냥 들어줘"}]
         self.assertIn("그냥 들어주기",conversation_instruction(history,"reflect"))
+    def test_automatic_mode(self):
+        self.assertEqual(normalize_mode("auto"), "auto")
+        self.assertEqual(normalize_mode(None), "auto")
+        self.assertEqual(effective_mode("auto", "그냥 내 얘기를 들어줘"), "listen")
+        self.assertEqual(effective_mode("auto", "어떻게 해야 할까요?"), "steps")
+        self.assertEqual(effective_mode("auto", "친구가 멀리 있어서 외로워요"), "reflect")
+        self.assertEqual(effective_mode("auto", "응 그런 것 같아"), "listen")
+    def test_adaptive_prompt(self):
+        messages=[{"role":"user","content":"상황을 같이 살펴볼래요?"}]
+        prompt=conversation_instruction(messages, "auto")
+        self.assertIn("대화가 충분히 이어지고", prompt)
+        self.assertIn("한 단계 더 이해", prompt)
     def test_prompt_collaborative(self):
         self.assertIn("동기강화상담",COUNSELOR_PROMPT)
 
