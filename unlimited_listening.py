@@ -7,15 +7,15 @@ safety policy must run before invoking any fallback.
 import re
 from conversation_logic import refine_reply
 
-ACK = re.compile(r"^\\s*(?:응|네|그래|맞아|맞아요|그래요|그렇지|그런\\s*것\\s*같아|그런\\s*것\\s*같아요|ㅇㅇ|예|그치)[.!?~…\\s]*$")
-ADV = re.compile(r"어떻게|방법|해결|조언|어쩌|도와줘|도와주세요|할\\s*수\\s*있을까")
-LISTEN = re.compile(r"그냥\\s*(들어|얘기)|들어줘|위로|조언\\s*말고|말만\\s*들어")
-DISTANCE = re.compile(r"멀리|떨어져|만나기\\s*어렵|거리|타지")
+ACK = re.compile(r"^\s*(?:응|네|그래|맞아|맞아요|그래요|그렇지|그런\s*것\s*같아|그런\s*것\s*같아요|ㅇㅇ|예|그치)[.!?~…\s]*$")
+ADV = re.compile(r"어떻게|방법|해결|조언|어쩌|도와줘|도와주세요|할\s*수\s*있을까")
+LISTEN = re.compile(r"그냥\s*(들어|얘기)|들어줘|위로|조언\s*말고|말만\s*들어")
+DISTANCE = re.compile(r"멀리|떨어져|만나기\s*어렵|거리|타지")
 CONTACT = re.compile(r"연락|답장|카톡|메시지|소통|전화")
 FRIEND = re.compile(r"친구|우정|사이")
 RELATIONSHIP = re.compile(r"친구|가족|부모|엄마|아빠|연인|남친|여친|남편|아내|관계|연락|답장")
 EMOTIONS = [
-    ("외로움", re.compile(r"외로|외롭|그립|보고\\s*싶|혼자|허전|쓸쓸")),
+    ("외로움", re.compile(r"외로|외롭|그립|보고\s*싶|혼자|허전|쓸쓸")),
     ("불안", re.compile(r"불안|걱정|초조|두렵|무섭|겁나|긴장")),
     ("서운함", re.compile(r"서운|속상|섭섭|상처|실망")),
     ("지침", re.compile(r"지쳐|지치|힘들|피곤|버겁|스트레스|무기력")),
@@ -38,7 +38,7 @@ TOPICS = [
     (re.compile(r"연인|남친|여친|남편|아내"),"가까운 사람과의 관계"),
     (re.compile(r"학교|공부|시험|성적"),"학교나 공부"),
     (re.compile(r"회사|직장|업무|일터|취업"),"일이나 직장"),
-    (re.compile(r"자책|자존감|내\\s*탓|스스로"),"나 자신을 바라보는 마음"),
+    (re.compile(r"자책|자존감|내\s*탓|스스로"),"나 자신을 바라보는 마음"),
 ]
 QUESTIONS = {
     "relationship": [
@@ -84,11 +84,11 @@ def reply(messages, mode="auto"):
     is_ack=bool(ACK.fullmatch(last))
     advice=bool(ADV.search(last)) or mode=="steps"
     listen=bool(LISTEN.search(last)) or mode=="listen"
-    if re.search(r"누구야|너\\s*뭐야|상담사야|자격|사람이야",last):
+    if re.search(r"누구야|너\s*뭐야|상담사야|자격|사람이야",last):
         return "저는 마음결의 자동 상담 대화 도우미예요. 실제 심리상담사는 아니지만 이야기를 듣고 정리하는 데 도움을 드릴 수 있어요."
-    if re.fullmatch(r"(안녕|안녕하세요|반가워|하이)[!?.\\s]*",last):
+    if re.fullmatch(r"(안녕|안녕하세요|반가워|하이)[!?.\s]*",last):
         return "안녕하세요. 여기서는 서두르지 않아도 돼요. 오늘은 어떤 이야기를 나누고 싶으세요?"
-    if re.search(r"그냥\\s*들어|조언\\s*말고|내\\s*얘기\\s*들어",last):
+    if re.search(r"그냥\s*들어|조언\s*말고|내\s*얘기\s*들어",last):
         return "지금은 답을 찾기보다 이야기를 충분히 들어주길 바라시는군요. 판단하지 않고 듣겠습니다."
     if is_ack:
         # Reflect the substance of prior turns, not the previous question.
@@ -142,7 +142,7 @@ def rehearsal_reply(messages,partner="friend",scenario=""):
     names={"friend":"친구","family":"가족","partner":"연인","teacher":"선생님","colleague":"직장 동료"}
     person=names.get(partner,"상대방")
     last=(messages[-1].get("content") or "").strip() if messages else ""
-    if re.search(r"서운|보고\\s*싶|외로|그립|연락",last):
+    if re.search(r"서운|보고\s*싶|외로|그립|연락",last):
         return "그런 마음이 있었는지 몰랐어. 나도 어떻게 해야 할지 바로 답하기는 어렵지만, 네 이야기는 더 들어보고 싶어."
     if re.search(r"미안|사과|잘못",last):
         return "네가 그렇게 이야기해 줘서 고마워. 나도 어떤 부분이 서로 불편했는지 조금 더 생각해 볼게."
