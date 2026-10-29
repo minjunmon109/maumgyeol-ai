@@ -299,45 +299,58 @@ function element(tag,className,text){const el=document.createElement(tag);if(cla
 const voicePlayer=(()=>{
   const supported=typeof window.SpeechSynthesisUtterance==='function'&&!!window.speechSynthesis;
   const engine=supported?window.speechSynthesis:null;
-  let enabled=supported,chosen=null,current=null,primed=false;
-  function available(){
-    if(!supported)return [];
-    return engine.getVoices().filter(v=>/^ko(?:-|$)/i.test(v.lang||'')||/한국어|korean/i.test(v.name||''));
-  }
-  function bestVoice(){
-    const voices=available();
-    voices.sort((a,b)=>score(b)-score(a));
-    return voices[0]||null;
-  }
+  let enabled=supported,current=null,primed=false;
+  let selectedKey='auto',rate=0.94,pitch=1,voiceList=[];
+  const voiceChoice=$('voiceChoice'),speed=$('voiceSpeed'),pitchRange=$('voicePitch');
   function score(v){
-    const n=(v.name||'').toLowerCase();
-    return (/premium|enhanced|natural|neural|siri|고품질|향상/.test(n)?45:0)
-      + (/ko-kr/i.test(v.lang||'')?12:0)
-      + (v.localService?5:0)
-      + (v.default?2:0)
-      + (/yuna|sora|jiyun|sunhi|eunji/.test(n)?3:0);
+    const name=(v.name||'').toLowerCase();
+    return (/premium|enhanced|natural|neural|siri|고품질|향상/.test(name)?42:0)
+      + (/ko-kr/i.test(v.lang||'')?10:0)
+      + (v.localService?5:0)+(v.default?2:0);
   }
-  if(supported){
-    chosen=bestVoice();
-    engine.addEventListener?.('voiceschanged',()=>{chosen=bestVoice();});
+  function getKorean(){
+    if(!supported)return [];
+    return engine.getVoices().filter(v=>/^ko(?:-|$)/i.test(v.lang||'')||/한국어|korean/i.test(v.name||''))
+      .sort((a,b)=>score(b)-score(a));
   }
-  function spokenText(value){
-    return String(value||'')
-      .replace(/<[^>]+>/g,' ')
-      .replace(/[*_#~|]/g,'')
-      .replace(/[“”]/g,'"')
-      .replace(/…{2,}/g,'…')
-      .replace(/\s*\n\s*/g,' ')
-      .replace(/\s+/g,' ').trim();
+  function keyFor(v){return [v.voiceURI||'',v.lang||'',v.name||''].join('|');}
+  function updateChoices(){
+    voiceList=getKorean();
+    if(!voiceChoice)return;
+    const present=voiceChoice.value||selectedKey;
+    voiceChoice.replaceChildren();
+    const auto=document.createElement('option');auto.value='auto';auto.textContent='기기에서 가장 적합한 목소리';
+    voiceChoice.append(auto);
+    voiceList.forEach((v,i)=>{
+      const option=document.createElement('option');
+      option.value=keyFor(v);option.textContent=v.name+' · '+(v.lang||'한국어')+(i===0?' · 추천':'');
+      voiceChoice.append(option);
+    });
+    voiceChoice.value=voiceList.some(v=>keyFor(v)===present)?present:'auto';
+    selectedKey=voiceChoice.value;
+    const help=$('voiceAdvice');
+    if(help)help.textContent=voiceList.length>1
+      ?'한국어 목소리 '+voiceList.length+'개를 찾았어요. 원하는 목소리를 고른 뒤 미리 들어 보세요.'
+      :voiceList.length===1
+        ?'이 기기에서는 한국어 목소리 1개만 표시돼요. 아이폰 설정에서 다른 한국어 음성을 추가하면 선택지가 늘어날 수 있습니다.'
+        :'이 브라우저에서 별도로 선택할 수 있는 한국어 목소리가 없어요. 기기 기본 음성으로 읽습니다.';
   }
+  function chooseVoice(){
+    const list=voiceList.length?voiceList:getKorean();
+    return list.find(v=>keyFor(v)===selectedKey)||list[0]||null;
+  }
+  const spokenText=value=>String(value||'')
+    .replace(/<[^>]+>/g,' ').replace(/[*_#~|]/g,'')
+    .replace(/[“”]/g,'"').replace(/…{2,}/g,'…')
+    .replace(/\s*\n\s*/g,' ').replace(/\s+/g,' ').trim();
   function stop(){
-    current=null;
+    const old=current;current=null;
     if(!supported)return;
+    if(old){old.onend=null;old.onerror=null;}
     try{engine.cancel();}catch{}
   }
   function prime(){
-    // iOS Safari commonly requires a user interaction before speech.
-    if(!supported||!enabled||primed)return;
+    if(!supported||primed)return;
     primed=true;
     try{
       const silent=new SpeechSynthesisUtterance(' ');
@@ -345,59 +358,62 @@ const voicePlayer=(()=>{
       engine.speak(silent);
     }catch{}
   }
-  function speak(text){
-    if(!supported||!enabled)return;
-    const prepared=spokenText(text);
-    if(!prepared)return;
+  function speak(text,finished=null,force=false){
+    if(!supported||(!enabled&&!force))return false;
+    const prepared=spokenText(text);if(!prepared)return false;
     stop();
     const utter=new SpeechSynthesisUtterance(prepared);
-    utter.lang='ko-KR';
-    utter.rate=0.97;
-    utter.pitch=1;
-    utter.volume=1;
-    chosen=bestVoice()||chosen;
-    if(chosen)utter.voice=chosen;
+    utter.lang='ko-KR';utter.rate=rate;utter.pitch=pitch;utter.volume=1;
+    const voice=chooseVoice();if(voice)utter.voice=voice;
     current=utter;
-    utter.onend=utter.onerror=()=>{if(current===utter)current=null;};
+    function done(){
+      if(current!==utter)return;
+      current=null;
+      if(typeof finished==='function')finished();
+    }
+    utter.onend=done;
+    utter.onerror=done;
     try{
       if(engine.paused)engine.resume();
       engine.speak(utter);
-    }catch{}
+      return true;
+    }catch{done();return false;}
   }
-  function startReply(){
-    stop();
-    prime();
-  }
-  // Stream text visually, but speak the complete response in a single smooth
-  // utterance. Breaking it into many speech jobs causes audible gaps and
-  // repetitive prosody on mobile devices.
+  function startReply(){stop();prime();}
   function onPreview(){}
   function onFinal(text){speak(text);}
-  function replay(text){
-    if(!supported)return;
-    enabled=true;updateButton();speak(text);
-  }
-  function toggle(){
-    enabled=!enabled;
-    if(!enabled)stop();
-    else prime();
-    updateButton();
-  }
+  function replay(text){enabled=true;updateButton();prime();speak(text);}
+  function toggle(){enabled=!enabled;if(!enabled)stop();else prime();updateButton();}
   function updateButton(){
-    const btn=document.getElementById('voiceToggle');
-    if(!btn)return;
+    const btn=$('voiceToggle');if(!btn)return;
     btn.disabled=!supported;
     btn.textContent=!supported?'🔇 음성 미지원':enabled?'🔊 음성 켜짐':'🔇 음성 꺼짐';
     btn.setAttribute('aria-pressed',String(enabled));
     btn.setAttribute('aria-label',enabled?'자동 음성 끄기':'자동 음성 켜기');
-    btn.title='기기에서 지원하는 한국어 음성으로 답변 전체를 자연스럽게 읽습니다';
   }
-  document.getElementById('voiceToggle')?.addEventListener('click',toggle);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
+  voiceChoice?.addEventListener('change',e=>{selectedKey=e.target.value;});
+  speed?.addEventListener('input',e=>{rate=Number(e.target.value)||.94;$('voiceSpeedValue').textContent=rate.toFixed(2)+'배';});
+  pitchRange?.addEventListener('input',e=>{pitch=Number(e.target.value)||1;$('voicePitchValue').textContent=pitch.toFixed(2);});
+  $('voiceSample')?.addEventListener('click',()=>{
+    prime();speak('안녕하세요. 저는 마음결이에요. 오늘은 어떤 마음으로 오셨나요?',null,true);
+  });
+  $('voiceDifferent')?.addEventListener('click',()=>{
+    updateChoices();
+    if(!voiceList.length){$('voiceAdvice').textContent='기기에 설치된 한국어 음성이 없어서 다른 목소리를 선택할 수 없어요.';return;}
+    const currentIndex=voiceList.findIndex(v=>keyFor(v)===selectedKey);
+    const next=voiceList[(currentIndex+1+voiceList.length)%voiceList.length];
+    selectedKey=keyFor(next);voiceChoice.value=selectedKey;
+    speak('이 목소리로 천천히 이야기해 볼까요?',null,true);
+  });
+  $('voiceToggle')?.addEventListener('click',toggle);
+  if(supported){
+    updateChoices();
+    engine.addEventListener?.('voiceschanged',updateChoices);
+  }else updateChoices();
   updateButton();
-  return {startReply,onPreview,onFinal,replay,stop,supported};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
+  return {startReply,onPreview,onFinal,replay,stop,prime,speak,supported};
 })();
-
 
 /* Browser speech recognition is available in modern Safari and several other
    browsers, but mic permission and remote recognition depend on device policy.
