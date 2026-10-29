@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from collections import defaultdict
 from pathlib import Path
-from counselor_policy import COUNSELOR_PROMPT, safety_response, demo_reply, safe_model_output
+from counselor_policy import COUNSELOR_PROMPT, safety_response, safe_model_output
 from conversation_logic import conversation_instruction, effective_mode, normalize_mode, refine_reply
 
 PORT = int(os.getenv("PORT", "10000"))
@@ -20,9 +20,9 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai")
 # Optional free hosted inference. Key is configured privately in Render, never in GitHub.
 # Free variants only: never fall back to billable models.
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen3.8-27b:free").strip()
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen3-8b:free").strip()
 if OPENROUTER_API_KEY and not MODEL_URL:
-    if not (OPENROUTER_MODEL.endswith(":free") or OPENROUTER_MODEL == "openrouter/free"):
+    if not OPENROUTER_MODEL.endswith(":free"):
         raise RuntimeError("Only free OpenRouter models are allowed")
     MODEL_URL = "https://openrouter.ai/api/v1/chat/completions"
     MODEL_API_KEY = OPENROUTER_API_KEY
@@ -41,7 +41,7 @@ if KEYLESS_BACKEND:
     FREE_EXTERNAL = True
 MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("openrouter" if FREE_EXTERNAL else "custom")
 
-MODEL_PROBE_STATUS = "checking" if FREE_EXTERNAL else "not_configured"
+MODEL_PROBE_STATUS = "ok" if MODEL_URL else "not_configured"
 FREE_MODEL_COOLDOWN_UNTIL = 0.0
 FREE_MODEL_COOLDOWN_LOCK = threading.Lock()
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID","").strip()
@@ -228,164 +228,6 @@ UPSTREAM_ERRORS = {
 def upstream_message(status):
     return UPSTREAM_ERRORS.get(status,"외부 AI 제공업체에 요청하지 못했습니다. 관리자에게 문의해 주세요.")
 
-def check_stream_probe():
-    """Check if the anonymous provider actually streams without user data."""
-    payload={"model":MODEL_NAME,
-             "messages":[{"role":"user","content":"안녕하세요. 자연스러운 한국어로 짧게 인사해 주세요."}],
-             "stream":True,"max_tokens":95}
-    started=time.monotonic()
-    try:
-        req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode("utf-8"),
-                    {"Content-Type":"application/json","Accept":"text/event-stream"},method="POST")
-        with urlopen(req,timeout=24) as resp:
-            for line in resp:
-                if not line.startswith(b"data:"):
-                    continue
-                part=line[5:].strip()
-                if part==b"[DONE]":
-                    break
-                try:
-                    body=json.loads(part)
-                    delta=(body.get("choices") or [{}])[0].get("delta") or {}
-                    text=delta.get("content")
-                except (ValueError,IndexError,AttributeError,KeyError):
-                    continue
-                if isinstance(text,str) and text.strip():
-                    print("KEYLESS_STREAM_PROBE first_ms="+str(int((time.monotonic()-started)*1000)),flush=True)
-                    return
-        print("KEYLESS_STREAM_PROBE no_content",flush=True)
-    except HTTPError as err:
-        print("KEYLESS_STREAM_PROBE http_"+str(err.code),flush=True)
-    except Exception as err:
-        print("KEYLESS_STREAM_PROBE "+type(err).__name__,flush=True)
-
-
-def check_anonymous_large_model():
-    # Probe using synthetic non-sensitive text. Keyless provider is separate
-    # from the user's OpenRouter API key and never receives that key.
-    global MODEL_PROBE_STATUS, MODEL_NAME
-    retry_seconds=240
-    candidates=("poolside/laguna-s-2.1:free","kilo-auto/free","cohere/north-mini-code:free")
-    for candidate in candidates:
-        payload={"model":candidate,
-                 "messages":[{"role":"system","content":"심리상담 대화 원칙으로 사용자의 말에 공감하며 한국어로만 두 문장을 답하세요. 영어는 쓰지 마세요."},{"role":"user","content":"요즘 직장에서 실수를 해서 속상해요."}],
-                 "max_tokens":400,"temperature":0.4,"stream":False}
-        try:
-            req=Request(MODEL_URL,
-                        json.dumps(payload,ensure_ascii=False).encode("utf-8"),
-                        {"Content-Type":"application/json","User-Agent":"Maumgyeol-Demo/1.0"},
-                        method="POST")
-            with urlopen(req,timeout=40) as response:
-                result=json.load(response)
-            choice=(result.get("choices") or [{}])[0]
-            msg=choice.get("message") or {}
-            output=msg.get("content")
-            if isinstance(output,str) and re.search(r"[가-힣]",output) and len(output.strip())>14:
-                MODEL_NAME=candidate
-                MODEL_PROBE_STATUS="ok"
-                print("KEYLESS_LLM_PROBE ok "+candidate,flush=True)
-                threading.Thread(target=check_stream_probe,daemon=True).start()
-                return
-            print("KEYLESS_LLM_PROBE empty_response "+candidate,flush=True)
-        except HTTPError as error:
-            print("KEYLESS_LLM_PROBE http_"+str(error.code)+" "+candidate,flush=True)
-            if error.code==429:
-                mark_free_model_unavailable(error)
-                retry_seconds=900
-                break
-        except Exception as error:
-            print("KEYLESS_LLM_PROBE "+type(error).__name__+" "+candidate,flush=True)
-    MODEL_PROBE_STATUS="unavailable"
-    print("KEYLESS_LLM_PROBE all_unavailable; continue locally",flush=True)
-    # Automatically re-check free availability using only a synthetic prompt.
-    # Never repeatedly probe a gateway whose IP limit was exhausted.
-    retry=threading.Timer(retry_seconds,check_anonymous_large_model)
-    retry.daemon=True
-    retry.start()
-
-
-def check_free_model_startup():
-    if KEYLESS_BACKEND:
-        check_anonymous_large_model()
-        return
-    # Only non-sensitive synthetic greetings are sent. Probe at most two free
-    # Qwen-family models with identical privacy filtering.
-    global MODEL_NAME, MODEL_PROBE_STATUS
-    if not FREE_EXTERNAL:
-        return
-    candidates=[MODEL_NAME]
-    fallback="qwen/qwen3-8b:free"
-    if MODEL_NAME != fallback and MODEL_NAME.endswith(":free"):
-        candidates.append(fallback)
-    headers={"Content-Type":"application/json","Authorization":"Bearer "+MODEL_API_KEY}
-    try:
-        catalog_req=Request("https://openrouter.ai/api/v1/models/user?limit=1000",headers={"Authorization":"Bearer "+MODEL_API_KEY})
-        with urlopen(catalog_req,timeout=15) as catalog_resp:
-            catalog=json.load(catalog_resp)
-        allowed_ids=[
-            m.get("id","") for m in catalog.get("data",[])
-            if isinstance(m,dict) and isinstance(m.get("id"),str)
-        ]
-        free_qwen=[m for m in allowed_ids if m.startswith("qwen/") and m.endswith(":free")]
-        print("FREE_QWEN_CATALOG allowed_free_qwen_count="+str(len(free_qwen)),flush=True)
-        for m in free_qwen:
-            if m not in candidates and len(candidates)<3:
-                candidates.append(m)
-    except HTTPError as e:
-        print("FREE_QWEN_CATALOG upstream_http_"+str(e.code),flush=True)
-    except Exception as e:
-        print("FREE_QWEN_CATALOG unavailable_"+type(e).__name__,flush=True)
-    for candidate in candidates:
-        if not candidate.endswith(":free"):
-            break
-        payload={
-            "model":candidate,
-            "messages":[{"role":"user","content":"안녕하세요. 한 문장으로 인사해 주세요."}],
-            "max_tokens":180,
-            "stream":False,
-            "provider":{"data_collection":"deny"}
-        }
-        try:
-            req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
-            with urlopen(req,timeout=28) as resp:
-                obj=json.load(resp)
-            choices=obj.get("choices") or []
-            success=bool(choices and choices[0].get("message",{}).get("content"))
-            if success:
-                MODEL_NAME=candidate
-                MODEL_PROBE_STATUS="ok"
-                print("FREE_QWEN_PROBE ok "+candidate,flush=True)
-                return
-            print("FREE_QWEN_PROBE empty_response "+candidate,flush=True)
-        except HTTPError as exc:
-            detail=""
-            try:
-                payload_error=json.loads(exc.read(4096)).get("error",{})
-                if isinstance(payload_error,dict):
-                    msg=str(payload_error.get("message","")).lower()
-                    meta=payload_error.get("metadata") or {}
-                    if isinstance(meta,dict) and meta.get("failed_routing_step"):
-                        detail=" failed_routing_step="+re.sub(r"[^a-zA-Z0-9_-]","",str(meta["failed_routing_step"]))[:45]
-                    elif any(k in msg for k in ("privacy","data policy","data collection","guardrail")):
-                        detail=" provider_privacy_filter"
-                    elif any(k in msg for k in ("no endpoints","no provider","not available")):
-                        detail=" no_eligible_provider"
-                    elif "model" in msg:
-                        detail=" model_unavailable"
-            except (ValueError,AttributeError,TypeError):
-                pass
-            print("FREE_QWEN_PROBE upstream_http_"+str(exc.code)+" "+candidate+detail,flush=True)
-            if exc.code not in (404,503,502,529):
-                return
-        except (URLError, TimeoutError) as exc:
-            print("FREE_QWEN_PROBE connection_error_"+type(exc).__name__,flush=True)
-            return
-        except Exception as exc:
-            print("FREE_QWEN_PROBE response_error_"+type(exc).__name__,flush=True)
-            return
-    MODEL_PROBE_STATUS="unavailable"
-    print("FREE_QWEN_PROBE all_eligible_qwen_providers_failed",flush=True)
-
 def firebase_user(authorization):
     """Server-side verification through Firebase Auth's authenticated lookup.
     The frontend can't fake membership by sending an arbitrary UID.
@@ -445,7 +287,7 @@ class Handler(BaseHTTPRequestHandler):
         if p=="/firebase-client.js":
             return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/api/status":
-            return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
+            return self.send(200,{"ready":bool(MODEL_URL) and model_available(),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":"available" if model_available() else "rate_limited","provider":MODEL_SOURCE,"mode":"single-generative-model","model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
     def stream_chat(self,messages,mode="auto",rehearsal=None):
@@ -461,7 +303,7 @@ class Handler(BaseHTTPRequestHandler):
             self.emit_stream({"type":"final","reply":reply,"safety":safe[1]})
             return
         if not MODEL_URL or not model_available():
-            return self.send(503,{"error":"무료 생성형 모델 사용량이 소진되었거나 현재 연결할 수 없습니다. 추가 생성형 모델을 연결해 보세요.","code":"model_unavailable"})
+            return self.send(503,{"error":"현재 무료 생성형 모델의 요청 한도가 소진되었거나 연결할 수 없습니다. 모델 이용 가능 상태가 회복되면 다시 시도해 주세요.","code":"model_unavailable"})
         try:
             response=urlopen(model_stream_request(messages,mode,rehearsal),timeout=24)
         except HTTPError as exc:
@@ -530,7 +372,7 @@ class Handler(BaseHTTPRequestHandler):
             mark_free_model_unavailable()
             try:
                 self.emit_stream({"type":"error","code":"model_unavailable",
-                                  "error":"생성형 모델 응답이 중단되었습니다. 다른 생성형 모델로 다시 시도해 주세요."})
+                                  "error":"생성형 모델 응답이 중단되었습니다. 이용 가능 상태를 확인하고 다시 시도해 주세요."})
             except (BrokenPipeError,ConnectionResetError):
                 pass
 
@@ -596,6 +438,4 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__=="__main__":
     print("Maumgyeol running",PORT,"guided-demo" if not MODEL_URL else "model-configured",flush=True)
-    if FREE_EXTERNAL:
-        threading.Thread(target=check_free_model_startup,daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0",PORT),Handler).serve_forever()
