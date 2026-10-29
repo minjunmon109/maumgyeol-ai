@@ -42,6 +42,12 @@ if KEYLESS_BACKEND:
 MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("openrouter" if FREE_EXTERNAL else "custom")
 
 MODEL_PROBE_STATUS = "checking" if FREE_EXTERNAL else "not_configured"
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID","").strip()
+FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY","").strip()
+FIREBASE_APP_ID = os.getenv("FIREBASE_APP_ID","").strip()
+FIREBASE_AUTH_DOMAIN = os.getenv("FIREBASE_AUTH_DOMAIN","").strip()
+FIREBASE_ENABLED = bool(FIREBASE_PROJECT_ID and FIREBASE_API_KEY and FIREBASE_APP_ID and FIREBASE_AUTH_DOMAIN)
+FIREBASE_JS = Path(__file__).with_name("firebase-client.js")
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
@@ -312,6 +318,36 @@ def check_free_model_startup():
     MODEL_PROBE_STATUS="unavailable"
     print("FREE_QWEN_PROBE all_eligible_qwen_providers_failed",flush=True)
 
+def firebase_user(authorization):
+    """Server-side verification through Firebase Auth's authenticated lookup.
+    The frontend can't fake membership by sending an arbitrary UID.
+    """
+    if not FIREBASE_ENABLED:
+        return None
+    if not isinstance(authorization,str) or not authorization.startswith("Bearer "):
+        return None
+    token=authorization[7:].strip()
+    if not 100 < len(token) < 12000:
+        return None
+    try:
+        endpoint="https://identitytoolkit.googleapis.com/v1/accounts:lookup?key="+FIREBASE_API_KEY
+        request=Request(endpoint,json.dumps({"idToken":token}).encode(),
+                        {"Content-Type":"application/json"},method="POST")
+        with urlopen(request,timeout=9) as response:
+            data=json.load(response)
+        user=(data.get("users") or [None])[0]
+        if not isinstance(user,dict) or user.get("disabled") or not user.get("emailVerified"):
+            return None
+        providers=user.get("providerUserInfo") or []
+        if not any(isinstance(p,dict) and p.get("providerId")=="google.com" for p in providers):
+            return None
+        uid=user.get("localId")
+        return uid if isinstance(uid,str) and 8<=len(uid)<=180 else None
+    except Exception:
+        # Never print credentials, token, or user-specific information in logs.
+        return None
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args): pass
     def send(self,status,content,ct="application/json; charset=utf-8",headers=None):
@@ -326,10 +362,20 @@ class Handler(BaseHTTPRequestHandler):
         p=urlsplit(self.path).path
         if p=="/health":return self.send(200,{"ok":True})
         if p=="/robots.txt":return self.send(200,"User-agent: *\nDisallow: /\n","text/plain")
-        if not auth(self.headers.get("Cookie","")):
+        if p=="/api/auth-config":
+            return self.send(200,{
+                "enabled":FIREBASE_ENABLED,
+                "firebase":({
+                    "apiKey":FIREBASE_API_KEY,"authDomain":FIREBASE_AUTH_DOMAIN,
+                    "projectId":FIREBASE_PROJECT_ID,"appId":FIREBASE_APP_ID
+                } if FIREBASE_ENABLED else None),
+            })
+        if not FIREBASE_ENABLED and not auth(self.headers.get("Cookie","")):
             return self.send(200,LOGIN,"text/html; charset=utf-8") if p=="/" else self.send(401,{"error":"초대 코드가 필요합니다."})
         if p in ("/","/index.html"):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
+        if p=="/firebase-client.js" and FIREBASE_ENABLED:
+            return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/api/status":
             return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
@@ -440,12 +486,18 @@ class Handler(BaseHTTPRequestHandler):
             raw=self.rfile.read(n)
         except ValueError:return self.send(400,{"error":"입력이 올바르지 않습니다."})
         ip=self.client_address[0]
+        if p=="/unlock" and FIREBASE_ENABLED:
+            return self.send(404,{"error":"구글 계정으로 로그인해야 이용할 수 있습니다."})
         if p=="/unlock":
             if not permitted(ip,"login",15):return self.send(429,{"error":"잠시 후 다시 시도해 주세요."})
             code=parse_qs(raw.decode(errors="replace")).get("code",[""])[0]
             if not hmac.compare_digest(code,ACCESS_CODE):return self.send(401,LOGIN.replace("초대 코드","코드를 다시 확인해 주세요"),"text/html; charset=utf-8")
             return self.send(303,b"","text/plain",{"Location":"/","Set-Cookie":"mg_session="+token()+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800"})
-        if not auth(self.headers.get("Cookie","")):return self.send(401,{"error":"접근 코드 입력 후 이용해 주세요."})
+        if FIREBASE_ENABLED:
+            if not firebase_user(self.headers.get("Authorization")):
+                return self.send(401,{"error":"구글 계정으로 로그인한 뒤 다시 시도해 주세요."})
+        elif not auth(self.headers.get("Cookie","")):
+            return self.send(401,{"error":"접근 코드 입력 후 이용해 주세요."})
         if p not in ("/api/chat","/api/chat/stream"):return self.send(404,{"error":"주소를 찾을 수 없습니다."})
         if not permitted(ip,"chat",60):return self.send(429,{"error":"요청이 너무 많아요."})
         try:
