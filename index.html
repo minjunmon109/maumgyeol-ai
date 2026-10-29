@@ -196,7 +196,16 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .timeline-tags{display:flex;gap:6px;flex-wrap:wrap}.timeline-tag{background:#e9f0e5;color:#62855f;border-radius:15px;padding:5px 9px;font-size:10px}
 .topbar-signature{margin-left:8px;background:#f4f0e6;border:1px solid #e2dfd2;border-radius:20px;padding:8px 12px;font-size:11px;font-weight:600;color:#8a7960;cursor:pointer;white-space:nowrap}
 @media(max-width:690px){.signature-panel{margin:15px auto 28px}.signature-body,.signature-hero{padding:18px}.signature-tabs{gap:5px}.signature-tab{font-size:10px;padding:11px 3px}.signature-heading h3{font-size:20px}.direction-layout{grid-template-columns:1fr;gap:14px}.direction-circle{height:138px;width:138px}.practice-form{grid-template-columns:1fr}.topbar-signature{margin-left:auto;margin-right:4px;padding:7px 8px;font-size:10px}.topbar-signature+.topbar-care{margin-left:0}}
-</style></head>
+.more-menu{position:relative;z-index:55;margin-left:8px;flex:0 0 auto}
+.more-menu summary{list-style:none;cursor:pointer;user-select:none;border:1px solid #dbe5d4;border-radius:18px;padding:8px 13px;font-size:11px;background:#eff5eb;color:#547352;font-weight:600;white-space:nowrap}
+.more-menu summary::-webkit-details-marker{display:none}.more-menu[open] summary{border-color:#94b18c;background:#e3f0df}
+.more-menu-content{position:absolute;top:calc(100% + 9px);right:0;width:min(310px,84vw);border:1px solid #dbe6d5;border-radius:14px;background:#fffefb;padding:7px;box-shadow:0 13px 37px rgba(35,57,36,.18);z-index:250}
+.more-menu-content button{width:100%;padding:11px;border:none;border-radius:9px;background:transparent;display:flex;align-items:center;gap:11px;text-align:left;cursor:pointer;color:#617f5e}
+.more-menu-content button:hover,.more-menu-content button:focus-visible{background:#eef5eb;outline:none}
+.more-menu-content button>span:first-child{font-size:22px;min-width:28px}.more-menu-content strong{font-size:12px;display:block;font-weight:650}.more-menu-content small{font-size:10px;display:block;color:#9aab94;margin-top:4px}
+@media(max-width:650px){.more-menu{margin-left:auto;margin-right:4px}.more-menu summary{font-size:10px;padding:7px 9px}.more-menu-content{right:-43px;max-width:87vw}}
+
+.fallback-note{margin:6px 0 10px 43px;color:#849781;font-size:10px;line-height:1.6;font-weight:500}</style></head>
 <body><div id="callOverlay" class="call-overlay" hidden role="dialog" aria-modal="true" aria-label="마음결 음성 대화">
 <div class="call-dialog">
   <div class="call-top"><span>마음결 · 음성 대화</span><button type="button" id="callClose" aria-label="음성 통화 종료">✕</button></div>
@@ -219,12 +228,18 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 <aside class="sidebar" aria-label="주 메뉴">
   <div class="brand"><svg viewBox="0 0 50 50" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M25 42V17M25 29C12 28 9 20 11 9c12 0 17 7 14 20Zm0-4C39 23 43 16 41 7 29 7 23 15 25 25Z"/><path d="M15 44h22"/></svg><div><strong>마음결</strong><small>MAEUMGYEOL</small></div></div>
   <button class="new-chat" id="newChat"><span>＋</span> 새로운 대화</button>
-  <nav class="nav" aria-label="페이지"><button class="nav-item active" data-view="talk"><span>☏</span> 대화하기 <i>•</i></button><button class="nav-item" data-view="signature"><span>✧</span> 대표 기능 3가지</button><button class="nav-item" data-view="care"><span>✦</span> 통합 마음 관리</button><button class="nav-item" data-view="mood"><span>♡</span> 마음 돌보기</button><button class="nav-item" data-view="about"><span>ⓘ</span> 이 공간에 대해</button></nav>
+  <nav class="nav" aria-label="페이지"><button class="nav-item active" data-view="talk"><span>☏</span> 대화하기 <i>•</i></button><button class="nav-item" data-view="signature"><span>⋯</span> 더보기</button><button class="nav-item" data-view="care"><span>✦</span> 통합 마음 관리</button><button class="nav-item" data-view="mood"><span>♡</span> 마음 돌보기</button><button class="nav-item" data-view="about"><span>ⓘ</span> 이 공간에 대해</button></nav>
   <section class="history"><p>이번 방문의 대화</p><span id="historySummary">첫 이야기를 기다리고 있어요.</span></section>
   <div class="sidebar-bottom"><div class="twig">♧</div><p>말하지 못했던 고민도<br>천천히 이야기해요.</p><button id="clearChat" class="text-button">대화 초기화 ↗</button><span>마음결 · 심리상담 대화</span></div>
 </aside>
 <div class="workspace">
-<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><span id="topbarEmotion" class="topbar-emotion" title="오늘의 마음 표현">🌱</span><button type="button" class="topbar-signature" id="topbarSignature" aria-label="고민 방향잡기, 현실 대화 연습, 감정 변화 기록 열기">✧ 대표 기능</button><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
+<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><span id="topbarEmotion" class="topbar-emotion" title="오늘의 마음 표현">🌱</span><details id="moreMenu" class="more-menu"><summary>⋯ 더보기</summary>
+<div class="more-menu-content" aria-label="마음결 더보기 메뉴">
+  <button type="button" data-more-feature="direction"><span>🧭</span><span><strong>고민 방향잡기</strong><small>반복되는 고민과 바라는 점 정리</small></span></button>
+  <button type="button" data-more-feature="practice"><span>💬</span><span><strong>현실 대화 연습</strong><small>친구·가족·연인과 대화 연습</small></span></button>
+  <button type="button" data-more-feature="timeline"><span>🌱</span><span><strong>감정 변화 기록</strong><small>날짜별 마음 표현 살펴보기</small></span></button>
+  <button type="button" data-more-section="care"><span>✦</span><span><strong>통합 마음 관리</strong><small>호흡·기분·고민 정리 노트</small></span></button>
+</div></details><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
 <div class="panes">
 <main class="main" id="mainContent">
 <section id="intro" class="intro"><div class="botanical" aria-hidden="true"><svg viewBox="0 0 180 160"><circle cx="86" cy="75" r="62" fill="#eeefe2"/><circle cx="127" cy="30" r="22" fill="#f0cbaa"/><path d="M83 132v-81" stroke="#667f61" stroke-width="2.2"/><path d="M83 94C53 91 46 72 49 59c29 0 37 19 34 35M83 99c30-10 34-31 31-42C90 62 79 81 83 99" fill="#799471"/><path d="M83 70c-24-7-29-28-22-38 18 5 25 20 22 38" fill="#b1c1a2"/><path d="M60 133h50" stroke="#647b5d"/><path d="M20 126c43 20 96 20 142-2" stroke="#d5dac9" fill="none"/></svg></div><div class="eyebrow">마음이 쉬어 가는 대화</div><h1>혼자 안고 있던 마음,<br><span class="hero-accent">여기서 천천히 이야기해요.</span></h1><p>고민을 잘 설명하지 않아도 괜찮아요.<br>지금 어떤 일이 마음에 남아 있는지부터 나눠 주세요.</p><div class="intro-caption"><span>✦</span> 서두르지 않는 경청 · 감정과 생각 정리 · 나에게 맞는 작은 선택</div></section>
@@ -558,7 +573,7 @@ const signatureTools=(()=>{
       }
       if(!response.body)throw Error('이 브라우저는 실시간 응답을 표시하지 못했습니다.');
       const reader=response.body.getReader(),decoder=new TextDecoder();
-      let buffer='',answer='',streamError='';
+      let buffer='',answer='',streamError='',practiceSource='model';
       while(true){
         const chunk=await reader.read();
         buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});
@@ -568,7 +583,7 @@ const signatureTools=(()=>{
           let event;try{event=JSON.parse(line);}catch{continue;}
           if(event.type==='preview'&&typeof event.text==='string')
             pending.querySelector('span').textContent=event.text;
-          else if(event.type==='final')answer=String(event.reply||'');
+          else if(event.type==='final'){answer=String(event.reply||'');practiceSource=event.source||'model';}
           else if(event.type==='error')streamError=event.error||'응답 오류';
         }
         if(chunk.done)break;
@@ -576,8 +591,9 @@ const signatureTools=(()=>{
       if(streamError||!answer)throw Error(streamError||'답변을 받지 못했습니다.');
       pending.querySelector('span').textContent=answer;
       practiceHistory.push({role:'assistant',content:answer});
+      if(practiceSource==='basic-listening')$feature('practiceStatus').textContent='기본 연습 대화로 전환했습니다. 이 답변은 생성형 모델이 만든 것이 아닙니다.';
       $feature('practiceReflect').disabled=false;
-      $feature('practiceStatus').textContent='이 답변은 실제 상대방의 반응을 예측한 것이 아니라 가상의 연습 예시입니다.';
+      if(practiceSource!=='basic-listening')$feature('practiceStatus').textContent='이 답변은 실제 상대방의 반응을 예측한 것이 아니라 가상의 연습 예시입니다.';
     }catch(err){
       pending.querySelector('span').textContent='응답이 원활하지 않았습니다. 다시 시도해 주세요.';
       $feature('practiceStatus').textContent=err.message||'연습 중 오류가 발생했습니다.';
@@ -968,11 +984,11 @@ const callInterface=(()=>{
     if(supported)listen();
     else setState('이 브라우저는 음성 인식을 지원하지 않습니다.');
   }
-  function answer(text,safety){
+  function answer(text,safety,source){
     if(!active)return;
     waiting=false;
     latest.textContent='마음결: '+text;
-    setState('마음결이 답하고 있어요…');
+    setState(source==='basic-listening'?'기본 경청 모드로 이어서 이야기해요.':'마음결이 답하고 있어요…');
     refresh();
     const started=voicePlayer.speak(text,()=>{
       if(!active)return;
@@ -1052,7 +1068,7 @@ async function sendMessage(content){
       throw Error(err.error||'대화 연결이 원활하지 않습니다.');}
     if(!res.body)throw Error('이 브라우저에서 실시간 대화를 표시하지 못했습니다.');
     const reader=res.body.getReader(),decoder=new TextDecoder();
-    let buffer='',answer='',safety='none';
+    let buffer='',answer='',safety='none',source='model';
     while(true){
       const chunk=await reader.read();
       buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});
@@ -1066,7 +1082,7 @@ async function sendMessage(content){
           pending.bubble.classList.remove('thinking');
           scrollBottom();
         }else if(evt.type==='final'&&typeof evt.reply==='string'){
-          answer=evt.reply;safety=evt.safety||'none';
+          answer=evt.reply;safety=evt.safety||'none';source=evt.source||'model';
         }else if(evt.type==='error')throw Error(evt.error||'대화에 문제가 생겼습니다.');
       }
       if(chunk.done)break;
@@ -1074,11 +1090,17 @@ async function sendMessage(content){
     if(!answer)throw Error('응답을 완성하지 못했습니다. 다시 시도해 주세요.');
     completed=true;
     if(fromCall){
-      if(callInterface.isActive())callInterface.answer(answer,safety);
+      if(callInterface.isActive())callInterface.answer(answer,safety,source);
     }else voicePlayer.onFinal(answer);
     pending.wrapper.remove();messages.push({role:'assistant',content:answer,at:Date.now()});
     if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
-    addMessage('assistant',answer,{safety});
+    const shown=addMessage('assistant',answer,{safety});
+    if(source==='basic-listening'){
+      const mode=document.createElement('div');
+      mode.className='fallback-note';
+      mode.textContent='기본 경청 답변 · 무료 모델 한도 초과 시 자동 전환';
+      shown.wrapper.append(mode);
+    }
   }catch(e){
     voicePlayer.stop();
     if(fromCall)callInterface.fail(e.message);
@@ -1110,12 +1132,23 @@ function selectView(view){
   $('topbarCare').textContent=view==='care'?'← 대화하기':'✦ 마음 관리';
   $('topbarCare').setAttribute('aria-label',view==='care'?'대화 화면 열기':'통합 마음 관리 화면 열기');
   if(view==='care')$('carePanel').scrollIntoView({behavior:'smooth',block:'start'});
-  $('topbarSignature').textContent=view==='signature'?'← 대화하기':'✧ 대표 기능';
+  $('moreMenu').open=false;
   if(view==='signature'){window.maumgyeolSignature?.refresh();$('signaturePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
 $('topbarCare').addEventListener('click',()=>selectView($('carePanel').hidden?'care':'talk'));
-$('topbarSignature').addEventListener('click',()=>selectView($('signaturePanel').hidden?'signature':'talk'));
+document.querySelectorAll('[data-more-feature]').forEach(btn=>btn.addEventListener('click',()=>{
+  $('moreMenu').open=false;
+  selectView('signature');
+  window.maumgyeolSignature?.chooseTab(btn.dataset.moreFeature);
+}));
+document.querySelectorAll('[data-more-section]').forEach(btn=>btn.addEventListener('click',()=>{
+  $('moreMenu').open=false;selectView(btn.dataset.moreSection);
+}));
+document.addEventListener('click',event=>{
+  const menu=$('moreMenu');
+  if(menu.open&&!menu.contains(event.target))menu.open=false;
+});
 document.querySelectorAll('[data-mood]').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('[data-mood]').forEach(x=>x.classList.remove('selected'));
  b.classList.add('selected');
