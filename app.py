@@ -9,6 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from counselor_policy import COUNSELOR_PROMPT, safety_response, demo_reply, safe_model_output
 from conversation_logic import conversation_instruction, effective_mode, normalize_mode, refine_reply
+from unlimited_listening import reply as basic_listening_reply, rehearsal_reply as basic_rehearsal_reply
 
 PORT = int(os.getenv("PORT", "10000"))
 ACCESS_CODE = os.environ["ACCESS_CODE"]
@@ -42,6 +43,8 @@ if KEYLESS_BACKEND:
 MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("openrouter" if FREE_EXTERNAL else "custom")
 
 MODEL_PROBE_STATUS = "checking" if FREE_EXTERNAL else "not_configured"
+FREE_MODEL_COOLDOWN_UNTIL = 0.0
+FREE_MODEL_COOLDOWN_LOCK = threading.Lock()
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID","").strip()
 FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY","").strip()
 FIREBASE_APP_ID = os.getenv("FIREBASE_APP_ID","").strip()
@@ -97,6 +100,43 @@ def demo(message):
         return "관계에서 겪는 어려움은 쉽게 정리되지 않을 수 있어요. 어떤 일이 있었는지 편안하게 들려주실래요?"
     return "아직 AI 모델이 연결되지 않아 안내 체험으로 답변하고 있어요. 이야기를 하나씩 정리해 볼까요? 가장 먼저 떠오르는 일이 무엇인가요?"
 
+def model_available():
+    if KEYLESS_BACKEND and MODEL_PROBE_STATUS != "ok":
+        return False
+    with FREE_MODEL_COOLDOWN_LOCK:
+        return time.monotonic() >= FREE_MODEL_COOLDOWN_UNTIL
+
+def mark_free_model_unavailable(error=None):
+    """Avoid repeatedly spending free requests while provider is rate limited."""
+    global FREE_MODEL_COOLDOWN_UNTIL
+    code=getattr(error,"code",None)
+    pause=600
+    if code==429:
+        pause=900
+        try:
+            value=int(error.headers.get("Retry-After", ""))
+            pause=max(60,min(3600,value))
+        except (ValueError,TypeError,AttributeError):
+            pass
+    elif code in (502,503,524,529):
+        pause=120
+    elif code not in (404,429,500,502,503,524,529,None):
+        return
+    with FREE_MODEL_COOLDOWN_LOCK:
+        FREE_MODEL_COOLDOWN_UNTIL=max(FREE_MODEL_COOLDOWN_UNTIL,time.monotonic()+pause)
+
+def basic_reply(messages,mode="auto",rehearsal=None):
+    """No external model request. Still run crisis safety policy first."""
+    safety=safety_response(messages[-1]["content"])
+    if safety:
+        return safe_model_output(safety[0]),"safety-guidance",safety[1]
+    if rehearsal:
+        reply=basic_rehearsal_reply(messages,rehearsal["partner"],rehearsal["scenario"])
+    else:
+        reply=basic_listening_reply(messages,mode)
+    return safe_model_output(reply),"basic-listening","none"
+
+
 # Roleplay is clearly labeled as a simulation: never pretend to know a real
 # person's motives or forecast their actual response.
 REHEARSAL_PARTNERS = {
@@ -140,14 +180,25 @@ def answer(messages, mode="auto", rehearsal=None):
         return safe[0], "safety-guidance", safe[1]
     if not MODEL_URL:
         return demo_reply(messages), "guided-demo", "none"
-    if KEYLESS_BACKEND and MODEL_PROBE_STATUS!="ok":
-        raise RuntimeError("Anonymous free model is not currently available")
+    if not model_available():
+        return basic_reply(messages,mode,rehearsal)
     payload=build_chat_payload(messages,mode=mode,rehearsal=rehearsal)
     headers={"Content-Type":"application/json"}
     if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
     req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
-    with urlopen(req,timeout=25) as resp:
-        data=json.load(resp)
+    try:
+        with urlopen(req,timeout=25) as resp:
+            data=json.load(resp)
+    except HTTPError as error:
+        if error.code in (404,429,500,502,503,524,529):
+            mark_free_model_unavailable(error)
+            print("FREE_MODEL_FALLBACK http_"+str(error.code),flush=True)
+            return basic_reply(messages,mode,rehearsal)
+        raise
+    except (URLError,TimeoutError) as error:
+        mark_free_model_unavailable()
+        print("FREE_MODEL_FALLBACK connection_"+type(error).__name__,flush=True)
+        return basic_reply(messages,mode,rehearsal)
     output=(data.get("message") or {}).get("content") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")
     if not isinstance(output,str) or not output.strip():
         raise ValueError("Empty model response")
@@ -401,6 +452,21 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
+    def emit_basic_event(self,messages,mode="auto",rehearsal=None):
+        reply,source,safety=basic_reply(messages,mode,rehearsal)
+        self.emit_stream({"type":"final","reply":reply,"source":source,"safety":safety})
+
+    def stream_basic_reply(self,messages,mode="auto",rehearsal=None):
+        self.send_response(200)
+        self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
+        self.send_header("Cache-Control","no-store, no-transform")
+        self.send_header("X-Accel-Buffering","no")
+        self.end_headers()
+        try:
+            self.emit_basic_event(messages,mode,rehearsal)
+        except (BrokenPipeError,ConnectionResetError):
+            pass
+
     def stream_chat(self,messages,mode="auto",rehearsal=None):
         started=time.monotonic()
         safe=safety_response(messages[-1]["content"])
@@ -421,16 +487,23 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.emit_stream({"type":"final","reply":reply,"safety":"none"})
             return
-        if KEYLESS_BACKEND and MODEL_PROBE_STATUS!="ok":
-            return self.send(503,{"error":"무료 상담 대화 서비스의 연결을 확인할 수 없습니다."})
+        if not model_available():
+            return self.stream_basic_reply(messages,mode,rehearsal)
         try:
             response=urlopen(model_stream_request(messages,mode,rehearsal),timeout=24)
         except HTTPError as exc:
             print("STREAM_UPSTREAM http_"+str(exc.code),flush=True)
+            if exc.code in (404,429,500,502,503,524,529):
+                mark_free_model_unavailable(exc)
+                return self.stream_basic_reply(messages,mode,rehearsal)
             return self.send(503,{"error":upstream_message(exc.code)})
+        except (URLError,TimeoutError) as exc:
+            print("STREAM_UPSTREAM connection_"+type(exc).__name__,flush=True)
+            mark_free_model_unavailable()
+            return self.stream_basic_reply(messages,mode,rehearsal)
         except Exception as exc:
             print("STREAM_UPSTREAM error_"+type(exc).__name__,flush=True)
-            return self.send(503,{"error":"외부 대화 서비스 연결이 원활하지 않습니다."})
+            return self.stream_basic_reply(messages,mode,rehearsal)
         self.send_response(200)
         self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
         self.send_header("Cache-Control","no-store, no-transform")
@@ -475,25 +548,19 @@ class Handler(BaseHTTPRequestHandler):
             final=korean_preview(raw,messages,mode)
             if not final:
                 raise ValueError("Empty streaming response")
-            self.emit_stream({"type":"final","reply":final,"safety":"none"})
+            self.emit_stream({"type":"final","reply":final,"safety":"none","source":"model"})
             print("MAUMGYEOL_STREAM elapsed_ms="+str(int((time.monotonic()-started)*1000)),flush=True)
         except (BrokenPipeError,ConnectionResetError):
             pass
         except Exception as exc:
             print("MAUMGYEOL_STREAM error_"+type(exc).__name__,flush=True)
             try:
-                # Some free providers advertise streaming but return only
-                # reasoning/empty deltas. Retry with a normal completion.
-                reply,source,safety=answer(messages,mode,rehearsal)
-                if source=="model" and reply:
-                    self.emit_stream({"type":"final","reply":reply,"safety":safety})
-                    print("MAUMGYEOL_STREAM fallback_nonstream_ok",flush=True)
-                else:
-                    self.emit_stream({"type":"error","error":"무료 대화 서비스가 현재 응답하지 않습니다."})
-            except Exception as retry_error:
-                print("MAUMGYEOL_STREAM fallback_error_"+type(retry_error).__name__,flush=True)
-                try:self.emit_stream({"type":"error","error":"무료 대화 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요."})
-                except (BrokenPipeError,ConnectionResetError):pass
+                # Don't retry the upstream on an empty/failed stream. It can
+                # consume another limited request and delay the user.
+                mark_free_model_unavailable()
+                self.emit_basic_event(messages,mode,rehearsal)
+            except (BrokenPipeError,ConnectionResetError):
+                pass
 
     def emit_stream(self,item):
         self.wfile.write((json.dumps(item,ensure_ascii=False)+"\n").encode("utf-8"))
@@ -520,7 +587,7 @@ class Handler(BaseHTTPRequestHandler):
         elif not auth(self.headers.get("Cookie","")):
             return self.send(401,{"error":"접근 코드 입력 후 이용해 주세요."})
         if p not in ("/api/chat","/api/chat/stream","/api/rehearsal/stream"):return self.send(404,{"error":"주소를 찾을 수 없습니다."})
-        if not permitted(ip,"chat",60):return self.send(429,{"error":"요청이 너무 많아요."})
+        if not permitted(ip,"chat",180):return self.send(429,{"error":"너무 짧은 시간에 요청이 많습니다. 잠시 후 다시 이야기해 주세요."})
         try:
             body=json.loads(raw)
             messages=body.get("messages")
