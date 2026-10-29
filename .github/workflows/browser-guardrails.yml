@@ -6,6 +6,7 @@ on:
       - app.py
       - chat-guardrails.js
       - tests/browser_guardrails.test.cjs
+      - tests/browser_conversation_benchmark.test.cjs
       - .github/workflows/browser-guardrails.yml
   workflow_dispatch:
 permissions:
@@ -22,6 +23,6 @@ jobs:
       - name: Syntax and deterministic safety tests
         run: |
           node --check chat-guardrails.js
-          node --test tests/browser_guardrails.test.cjs
+          node --test tests/*.test.cjs
       - name: Server Python syntax
         run: python -m py_compile app.py counselor_policy.py conversation_logic.py
