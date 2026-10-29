@@ -165,6 +165,8 @@ def main(argv=None):
         "train_examples": len(train), "validation_examples": len(val),
         "train_sha256": sha256(args.train), "val_sha256": sha256(args.val),
         "adapter_sha256": sha256(adapter), "steps": int(result.global_step),
+        "smoke_test_only": args.max_steps < 50,
+        "training_data_provenance": "confirm source permission independently; data are not clinically validated",
         "train_loss": result.training_loss,
         "val_loss": metrics.get("eval_loss"),
         "data_license_independently_verified": False,
