@@ -4,6 +4,7 @@ import os, json, time, hmac, hashlib, secrets, re, threading
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlsplit, parse_qs
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 from collections import defaultdict
 from pathlib import Path
 from counselor_policy import COUNSELOR_PROMPT, safety_response, demo_reply, safe_model_output
@@ -101,6 +102,53 @@ def answer(messages):
     s=re.sub(r"<think>[\s\S]*?</think>","",s,flags=re.I).strip()
     return safe_model_output(s[:8000]),"model","none"
 
+
+# These error messages are deliberately generic: never send API keys, upstream
+# request bodies, URLs with credentials, or sensitive chat text to the browser.
+UPSTREAM_ERRORS = {
+    400: "외부 AI 요청 형식이 맞지 않습니다. 관리자에게 알려 주세요.",
+    401: "OpenRouter API 키가 올바르지 않거나 폐기됐습니다. Render의 OPENROUTER_API_KEY를 새 키로 교체해 주세요.",
+    402: "OpenRouter 계정에 현재 모델을 이용할 수 있는 무료 할당량이 없습니다. 무료 이용 조건을 확인해 주세요.",
+    403: "OpenRouter가 요청을 거부했습니다. API 키 권한과 계정의 개인정보 보호 설정을 확인해 주세요.",
+    404: "현재 개인정보 보호 조건을 만족하는 무료 Qwen 모델 제공업체를 찾지 못했습니다. 무료 모델 제공 상황을 확인해 주세요.",
+    408: "무료 모델 응답 시간이 초과됐습니다. 잠시 후 다시 시도해 주세요.",
+    429: "OpenRouter 무료 요청 횟수 제한에 걸렸습니다. 이용 가능 횟수가 회복된 후 다시 시도해 주세요.",
+    500: "OpenRouter 또는 모델 제공업체에서 일시적인 오류가 발생했습니다.",
+    502: "무료 모델 제공업체가 정상 응답하지 않았습니다. 잠시 후 다시 시도해 주세요.",
+    503: "무료 모델 제공업체가 현재 사용 불가 상태입니다. 잠시 후 다시 시도해 주세요.",
+    524: "무료 모델 제공업체의 응답이 지연되어 시간이 초과됐습니다.",
+    529: "무료 모델 제공업체에 요청이 몰렸습니다. 잠시 후 다시 시도해 주세요.",
+}
+def upstream_message(status):
+    return UPSTREAM_ERRORS.get(status,"외부 AI 제공업체에 요청하지 못했습니다. 관리자에게 문의해 주세요.")
+
+def check_free_model_startup():
+    # No user conversations are sent: a single harmless greeting checks model
+    # authentication, route availability, and provider privacy compatibility.
+    if not FREE_EXTERNAL:
+        return
+    payload={
+        "model":MODEL_NAME,
+        "messages":[{"role":"user","content":"한국어로 안녕하세요라고만 말해주세요."}],
+        "max_tokens":48,
+        "stream":False,
+        "provider":{"data_collection":"deny"}
+    }
+    headers={"Content-Type":"application/json","Authorization":"Bearer "+MODEL_API_KEY}
+    try:
+        req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
+        with urlopen(req,timeout=22) as resp:
+            obj=json.load(resp)
+        choices=obj.get("choices") or []
+        success=bool(choices and choices[0].get("message",{}).get("content"))
+        print("FREE_QWEN_PROBE", "ok" if success else "empty_response", flush=True)
+    except HTTPError as exc:
+        print("FREE_QWEN_PROBE", "upstream_http_"+str(exc.code),flush=True)
+    except (URLError, TimeoutError) as exc:
+        print("FREE_QWEN_PROBE", "connection_error_"+type(exc).__name__,flush=True)
+    except Exception as exc:
+        print("FREE_QWEN_PROBE", "response_error_"+type(exc).__name__,flush=True)
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args): pass
     def send(self,status,content,ct="application/json; charset=utf-8",headers=None):
@@ -150,9 +198,19 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,TypeError,AttributeError):
             return self.send(400,{"error":"메시지 형식을 확인해 주세요."})
         try: reply,source,safety=answer(messages)
-        except Exception: return self.send(503,{"error":"학습 모델 서버에 연결하지 못했습니다. 관리자에게 문의해 주세요."})
+        except HTTPError as exc:
+            print("FREE_QWEN_CHAT", "upstream_http_"+str(exc.code),flush=True)
+            return self.send(503,{"error":upstream_message(exc.code),"upstream_status":exc.code})
+        except (URLError, TimeoutError) as exc:
+            print("FREE_QWEN_CHAT", "connection_error_"+type(exc).__name__,flush=True)
+            return self.send(503,{"error":"외부 AI 서버에 네트워크 연결이 되지 않거나 응답이 늦어졌습니다."})
+        except Exception as exc:
+            print("FREE_QWEN_CHAT", "model_error_"+type(exc).__name__,flush=True)
+            return self.send(503,{"error":"외부 AI 응답을 처리하지 못했습니다. 무료 모델이 잠시 불안정할 수 있습니다."})
         return self.send(200,{"reply":reply,"source":source,"safety":safety})
 
 if __name__=="__main__":
     print("Maumgyeol running",PORT,"guided-demo" if not MODEL_URL else "model-configured",flush=True)
+    if FREE_EXTERNAL:
+        threading.Thread(target=check_free_model_startup,daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0",PORT),Handler).serve_forever()
