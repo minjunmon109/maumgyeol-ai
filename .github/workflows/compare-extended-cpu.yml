@@ -4,11 +4,13 @@ on:
     branches: [next-stage-cpu-evaluation-20261030]
     paths:
       - training/compare_model_audits.py
+      - training/response_signal_checks.py
       - tests/test_compare_model_audits.py
       - .github/workflows/compare-extended-cpu.yml
   pull_request:
     paths:
       - training/compare_model_audits.py
+      - training/response_signal_checks.py
       - tests/test_compare_model_audits.py
       - .github/workflows/compare-extended-cpu.yml
   workflow_dispatch: {}
@@ -26,7 +28,7 @@ jobs:
           python-version: '3.11'
       - name: Verify evaluation code and fail-closed safeguards
         run: |
-          python -m py_compile training/compare_model_audits.py
+          python -m py_compile training/compare_model_audits.py training/response_signal_checks.py
           python -m unittest discover -s tests -p 'test_*.py'
       - name: Confirm existing website release remains inactive
         run: |
