@@ -22,7 +22,7 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen3-8b:free").strip()
 if OPENROUTER_API_KEY and not MODEL_URL:
-    if not OPENROUTER_MODEL.endswith(":free"):
+    if not (OPENROUTER_MODEL.endswith(":free") or OPENROUTER_MODEL == "openrouter/free"):
         raise RuntimeError("Only free OpenRouter models are allowed")
     MODEL_URL = "https://openrouter.ai/api/v1/chat/completions"
     MODEL_API_KEY = OPENROUTER_API_KEY
@@ -32,7 +32,7 @@ FREE_EXTERNAL = bool(OPENROUTER_API_KEY and MODEL_URL == "https://openrouter.ai/
 # Zero-download, anonymous, no-API-key large-model trial.
 # Authorized by the official Kilo gateway's anonymous :free access policy.
 # Never use paid model IDs, and never send a secret token to this provider.
-KEYLESS_BACKEND = os.getenv("KEYLESS_BACKEND", "kilo").strip().lower() == "kilo" and not os.getenv("MODEL_URL","").strip()
+KEYLESS_BACKEND = os.getenv("KEYLESS_BACKEND", "kilo").strip().lower() == "kilo" and not MODEL_URL
 if KEYLESS_BACKEND:
     MODEL_URL = "https://api.kilo.ai/api/gateway/chat/completions"
     MODEL_API_KEY = ""
@@ -438,4 +438,4 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__=="__main__":
     print("Maumgyeol running",PORT,"guided-demo" if not MODEL_URL else "model-configured",flush=True)
-    ThreadingHTTPServer(("0.0.0.0",PORT),Handler).serve_forever()
+    ThreadingHTTPServer((os.getenv("HOST", "0.0.0.0"),PORT),Handler).serve_forever()
