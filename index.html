@@ -375,7 +375,7 @@ const messages=[];
 const localAI=(()=>{
   const MODEL="Qwen3-1.7B-q4f16_1-MLC";
   const VERSION="0.2.86";
-  const SYSTEM="당신은 '마음결'이라는 한국어 정서지원 생성형 AI입니다. 실제 의료인이나 심리상담사라고 주장하지 마세요. 반드시 자연스러운 한국어 존댓말로 대답하세요. 사용자의 실제 이야기에 맞춰 짧게 1~3문장으로 반응하며, 인사에는 친근하게 인사하고, 질문에는 질문의 핵심을 답하고, 감정을 말하면 그 감정을 구체적으로 이해하고 반영하세요. 공허한 위로, 같은 문장 반복, 과장, 근거 없는 단정, 매번 질문하기를 피하세요. 경청을 원하면 조언하지 말고, 사용자가 해결책을 청할 때만 구체적인 선택지를 설명하세요. 해를 입거나 자살 위험이 있을 때는 119, 112, 자살예방상담전화 109 등 실제 도움을 권하고 위험 행동을 돕지 마세요. 진단과 처방, 치료 보장, 비밀유지 보장을 하지 마세요.";
+  const SYSTEM="당신은 마음결의 한국어 정서지원 생성형 AI입니다. 실제 심리상담사나 의료인이라 주장하지 마세요. 자연스럽고 따뜻한 존댓말로 1~3문장 답하세요. 인사에는 인사하고, 질문에는 정확히 답하고, 고민에는 구체적으로 공감하며 무의미한 반복이나 뻔한 문구를 피하세요. 사용자가 조언을 원하지 않으면 경청하고, 요청하면 실행 가능한 제안을 해주세요. 자해·자살 위험이 있으면 안전 확보와 119·112·109 같은 전문 도움을 권하세요. 진단·처방·치료·비밀보장을 약속하지 마세요.";
   let engine=null,initialization=null,generating=false;
   const state=document.getElementById("deviceAiState");
   const notice=document.getElementById("deviceAiNotice");
@@ -406,15 +406,17 @@ const localAI=(()=>{
       const mod=await import("https://esm.run/@mlc-ai/web-llm@"+VERSION);
       if(!mod.CreateMLCEngine)throw Error("WebLLM 실행기를 불러오지 못했습니다.");
       setState("모델 다운로드 중","Qwen3 1.7B 모델을 내려받습니다. 처음에는 시간이 걸릴 수 있습니다.");
+      // iPhone Safari can evict a WebGPU tab when the KV cache grows.
+      // Keep the same Qwen3-1.7B model, but cap its context and prefill batch.
       engine=await mod.CreateMLCEngine(MODEL,{
         initProgressCallback(p){
           if(typeof p.progress==="number"&&Number.isFinite(p.progress))progress.value=Math.min(1,Math.max(0,p.progress));
           if(typeof p.text==="string"&&p.text.trim())notice.textContent=p.text.slice(0,260);
           state.textContent="모델 준비 "+Math.round(progress.value*100)+"%";
         }
-      });
+      },{context_window_size:1536,prefill_chunk_size:128});
       progress.hidden=true;start.textContent="기기 AI 준비 완료";start.disabled=true;
-      setState("대화 준비됨","이제 Qwen3 1.7B가 이 기기에서 답변을 생성합니다. API 요청 한도는 없지만 GPU 메모리와 처리 속도 제한은 있습니다.",true);
+      setState("대화 준비됨","Qwen3 1.7B가 아이폰 메모리 절약 설정(대화 길이 축소·화면 갱신 제한)으로 실행됩니다. API 한도는 없지만 Safari 자체 메모리 제한으로 종료될 가능성은 남아 있습니다.",true);
       return engine;
     })().catch(err=>{
       engine=null;initialization=null;start.disabled=false;start.textContent="다시 다운로드 / 시작";
@@ -429,22 +431,29 @@ const localAI=(()=>{
     if(generating)throw Error("다른 대화의 답변을 생성 중입니다. 완료한 뒤 다시 시도해 주세요.");
     generating=true;
     try{
-      const compact=history.slice(-8).map(m=>({
+      // Avoid oversizing the GPU KV cache and prefill work for a short mobile chat.
+      const compact=history.slice(-5).map(m=>({
         role:m.role==="assistant"?"assistant":"user",
-        content:String(m.content||"").slice(-600)
+        content:String(m.content||"").slice(-330)
       }));
       const stream=await model.chat.completions.create({
         messages:[{role:"system",content:rolePrompt},...compact],
-        temperature:0.65,top_p:0.85,max_tokens:240,stream:true,extra_body:{enable_thinking:false}
+        temperature:0.65,top_p:0.85,max_tokens:128,stream:true,extra_body:{enable_thinking:false}
       });
-      let raw="";
+      let raw="",lastPreviewAt=0;
       for await(const chunk of stream){
         const part=chunk.choices?.[0]?.delta?.content;
         if(typeof part==="string")raw+=part;
-        const visible=clean(raw);
-        if(visible)onPreview(visible);
+        // Updating the full chat DOM for every generated token overworks iOS Safari.
+        const now=performance.now();
+        if(now-lastPreviewAt>180){
+          const visible=clean(raw);
+          if(visible)onPreview(visible);
+          lastPreviewAt=now;
+        }
       }
       const answer=clean(raw);
+      if(answer)onPreview(answer);
       if(!answer)throw Error("기기 모델이 빈 응답을 생성했습니다. 다시 시도해 주세요.");
       return answer;
     }finally{generating=false;}
@@ -1158,7 +1167,8 @@ async function sendMessage(content){
   const pending=addMessage("assistant","기기 AI 모델을 준비하고 있어요…",{pending:true});
   try{
     const answer=await localAI.complete(messages,(preview)=>{
-      pending.bubble.textContent=preview;pending.bubble.classList.remove("thinking");scrollBottom();
+      pending.bubble.textContent=preview;pending.bubble.classList.remove("thinking");
+      if(!pending.wrapper.dataset.scrolled){pending.wrapper.dataset.scrolled="1";scrollBottom();}
       voicePlayer.onPreview(preview);
     });
     if(fromCall){if(callInterface.isActive())callInterface.answer(answer,"none","local-model");}
