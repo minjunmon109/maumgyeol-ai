@@ -9,7 +9,6 @@ from collections import defaultdict
 from pathlib import Path
 from counselor_policy import COUNSELOR_PROMPT, safety_response, demo_reply, safe_model_output
 from conversation_logic import conversation_instruction, effective_mode, normalize_mode, refine_reply
-from unlimited_listening import reply as basic_listening_reply, rehearsal_reply as basic_rehearsal_reply
 
 PORT = int(os.getenv("PORT", "10000"))
 ACCESS_CODE = os.environ["ACCESS_CODE"]
@@ -125,18 +124,6 @@ def mark_free_model_unavailable(error=None):
     with FREE_MODEL_COOLDOWN_LOCK:
         FREE_MODEL_COOLDOWN_UNTIL=max(FREE_MODEL_COOLDOWN_UNTIL,time.monotonic()+pause)
 
-def basic_reply(messages,mode="auto",rehearsal=None):
-    """No external model request. Still run crisis safety policy first."""
-    safety=safety_response(messages[-1]["content"])
-    if safety:
-        return safe_model_output(safety[0]),"safety-guidance",safety[1]
-    if rehearsal:
-        reply=basic_rehearsal_reply(messages,rehearsal["partner"],rehearsal["scenario"])
-    else:
-        reply=basic_listening_reply(messages,mode)
-    return safe_model_output(reply),"basic-listening","none"
-
-
 # Roleplay is clearly labeled as a simulation: never pretend to know a real
 # person's motives or forecast their actual response.
 REHEARSAL_PARTNERS = {
@@ -178,10 +165,8 @@ def answer(messages, mode="auto", rehearsal=None):
     safe=safety_response(text)
     if safe:
         return safe[0], "safety-guidance", safe[1]
-    if not MODEL_URL:
-        return basic_reply(messages,mode,rehearsal)
-    if not model_available():
-        return basic_reply(messages,mode,rehearsal)
+    if not MODEL_URL or not model_available():
+        raise RuntimeError("Generative model unavailable")
     payload=build_chat_payload(messages,mode=mode,rehearsal=rehearsal)
     headers={"Content-Type":"application/json"}
     if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
@@ -192,17 +177,17 @@ def answer(messages, mode="auto", rehearsal=None):
     except HTTPError as error:
         if error.code in (404,429,500,502,503,524,529):
             mark_free_model_unavailable(error)
-            print("FREE_MODEL_FALLBACK http_"+str(error.code),flush=True)
-            return basic_reply(messages,mode,rehearsal)
+            print("FREE_MODEL_UNAVAILABLE http_"+str(error.code),flush=True)
+            raise
         raise
     except (URLError,TimeoutError) as error:
         mark_free_model_unavailable()
-        print("FREE_MODEL_FALLBACK connection_"+type(error).__name__,flush=True)
-        return basic_reply(messages,mode,rehearsal)
+        print("FREE_MODEL_UNAVAILABLE connection_"+type(error).__name__,flush=True)
+        raise
     output=(data.get("message") or {}).get("content") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")
     if not isinstance(output,str) or not output.strip():
         mark_free_model_unavailable()
-        return basic_reply(messages,mode,rehearsal)
+        raise RuntimeError("Generative model unavailable")
     return (safe_model_output(output[:5000]) if rehearsal else refine_reply(safe_model_output(output[:5000]),messages,mode)),"model","none"
 
 
@@ -463,21 +448,6 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
-    def emit_basic_event(self,messages,mode="auto",rehearsal=None):
-        reply,source,safety=basic_reply(messages,mode,rehearsal)
-        self.emit_stream({"type":"final","reply":reply,"source":source,"safety":safety})
-
-    def stream_basic_reply(self,messages,mode="auto",rehearsal=None):
-        self.send_response(200)
-        self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
-        self.send_header("Cache-Control","no-store, no-transform")
-        self.send_header("X-Accel-Buffering","no")
-        self.end_headers()
-        try:
-            self.emit_basic_event(messages,mode,rehearsal)
-        except (BrokenPipeError,ConnectionResetError):
-            pass
-
     def stream_chat(self,messages,mode="auto",rehearsal=None):
         started=time.monotonic()
         safe=safety_response(messages[-1]["content"])
@@ -490,25 +460,23 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.emit_stream({"type":"final","reply":reply,"safety":safe[1]})
             return
-        if not MODEL_URL:
-            return self.stream_basic_reply(messages,mode,rehearsal)
-        if not model_available():
-            return self.stream_basic_reply(messages,mode,rehearsal)
+        if not MODEL_URL or not model_available():
+            return self.send(503,{"error":"무료 생성형 모델 사용량이 소진되었거나 현재 연결할 수 없습니다. 추가 생성형 모델을 연결해 보세요.","code":"model_unavailable"})
         try:
             response=urlopen(model_stream_request(messages,mode,rehearsal),timeout=24)
         except HTTPError as exc:
             print("STREAM_UPSTREAM http_"+str(exc.code),flush=True)
             if exc.code in (404,429,500,502,503,524,529):
                 mark_free_model_unavailable(exc)
-                return self.stream_basic_reply(messages,mode,rehearsal)
+                return self.send(503,{"error":upstream_message(exc.code),"code":"model_unavailable"})
             return self.send(503,{"error":upstream_message(exc.code)})
         except (URLError,TimeoutError) as exc:
             print("STREAM_UPSTREAM connection_"+type(exc).__name__,flush=True)
             mark_free_model_unavailable()
-            return self.stream_basic_reply(messages,mode,rehearsal)
+            return self.send(503,{"error":"생성형 모델 연결이 원활하지 않습니다.","code":"model_unavailable"})
         except Exception as exc:
             print("STREAM_UPSTREAM error_"+type(exc).__name__,flush=True)
-            return self.stream_basic_reply(messages,mode,rehearsal)
+            return self.send(503,{"error":"생성형 모델 연결이 원활하지 않습니다.","code":"model_unavailable"})
         self.send_response(200)
         self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
         self.send_header("Cache-Control","no-store, no-transform")
@@ -559,11 +527,10 @@ class Handler(BaseHTTPRequestHandler):
             pass
         except Exception as exc:
             print("MAUMGYEOL_STREAM error_"+type(exc).__name__,flush=True)
+            mark_free_model_unavailable()
             try:
-                # Don't retry the upstream on an empty/failed stream. It can
-                # consume another limited request and delay the user.
-                mark_free_model_unavailable()
-                self.emit_basic_event(messages,mode,rehearsal)
+                self.emit_stream({"type":"error","code":"model_unavailable",
+                                  "error":"생성형 모델 응답이 중단되었습니다. 다른 생성형 모델로 다시 시도해 주세요."})
             except (BrokenPipeError,ConnectionResetError):
                 pass
 
@@ -617,13 +584,13 @@ class Handler(BaseHTTPRequestHandler):
         try: reply,source,safety=answer(messages,mode)
         except HTTPError as exc:
             print("FREE_QWEN_CHAT", "upstream_http_"+str(exc.code),flush=True)
-            return self.send(503,{"error":upstream_message(exc.code),"upstream_status":exc.code})
+            return self.send(503,{"error":upstream_message(exc.code),"code":"model_unavailable"})
         except (URLError, TimeoutError) as exc:
             print("FREE_QWEN_CHAT", "connection_error_"+type(exc).__name__,flush=True)
             return self.send(503,{"error":"외부 AI 서버에 네트워크 연결이 되지 않거나 응답이 늦어졌습니다."})
         except Exception as exc:
             print("FREE_QWEN_CHAT", "model_error_"+type(exc).__name__,flush=True)
-            return self.send(503,{"error":"외부 AI 응답을 처리하지 못했습니다. 무료 모델이 잠시 불안정할 수 있습니다."})
+            return self.send(503,{"error":"생성형 모델 응답을 받지 못했습니다.","code":"model_unavailable"})
         if source=="model": print("MAUMGYEOL_REPLY elapsed_ms="+str(int((time.monotonic()-started)*1000)),flush=True)
         return self.send(200,{"reply":reply,"source":source,"safety":safety})
 
