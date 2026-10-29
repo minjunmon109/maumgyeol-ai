@@ -200,6 +200,126 @@ const voicePlayer=(()=>{
   return {startReply,onPreview,onFinal,replay,stop,supported};
 })();
 
+
+/* Browser speech recognition is available in modern Safari and several other
+   browsers, but mic permission and remote recognition depend on device policy.
+   No microphone recording is uploaded to the Maumgyeol application server. */
+const speechInput=(()=>{
+  const Mic=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const btn=$('micButton'),hint=$('speechHint');
+  let recognizer=null,active=false,base='',finalText='',errorOccurred=false;
+  const supported=typeof Mic==='function';
+  function inform(message,isActive=false){
+    if(hint){hint.textContent=message;hint.classList.toggle('active',isActive);}
+  }
+  function update(){
+    if(!btn)return;
+    btn.classList.toggle('listening',active);
+    btn.setAttribute('aria-pressed',String(active));
+    btn.setAttribute('aria-label',active?'음성 인식 끝내기':'음성으로 말하기');
+    btn.textContent=active?'🔴 듣는 중 · 완료':'🎙 말하기';
+    btn.disabled=!supported||busy;
+    btn.title=supported?'누르고 한국어로 말하세요. 말을 마치면 자동 전송합니다.':'이 브라우저는 음성 인식을 지원하지 않습니다. 키보드의 마이크를 이용해 주세요.';
+  }
+  function cancel(){
+    const old=recognizer;
+    recognizer=null;active=false;finalText='';errorOccurred=true;
+    if(old){
+      old.onresult=null;old.onerror=null;old.onend=null;
+      try{old.abort();}catch{}
+    }
+    update();
+  }
+  function errorText(name){
+    return ({
+      'not-allowed':'마이크 사용이 허용되지 않았어요. 브라우저의 마이크 권한을 확인해 주세요.',
+      'service-not-allowed':'이 기기에서 음성 인식을 허용하지 않았어요. Safari의 권한을 확인해 주세요.',
+      'audio-capture':'마이크를 사용할 수 없어요. 다른 앱에서 사용 중인지 확인해 주세요.',
+      'no-speech':'목소리가 들리지 않았어요. 마이크를 다시 눌러 말씀해 주세요.',
+      'network':'음성 인식 서비스에 연결되지 않았어요. 다시 시도하거나 키보드 마이크를 사용해 주세요.',
+      'language-not-supported':'한국어 음성 인식을 이용할 수 없어요.'
+    })[name]||'음성 인식이 중단됐어요. 다시 시도해 주세요.';
+  }
+  function toggle(){
+    if(!supported){
+      inform('이 브라우저는 자동 음성 인식을 지원하지 않아요. 키보드의 마이크로 받아쓰기한 다음 전송해 주세요.');
+      input.focus();
+      return;
+    }
+    if(busy)return;
+    if(active){
+      try{recognizer?.stop();}catch{cancel();}
+      inform('말씀을 정리하고 있어요…',true);
+      return;
+    }
+    if(!$('externalConsentWrap').hidden&&!$('externalConsent').checked){
+      inform('외부 대화 전송 동의에 체크한 뒤 마이크를 이용해 주세요.');
+      alert('외부 대화 처리 서비스에 전송하는 데 동의한 뒤 마이크를 이용해 주세요.');
+      return;
+    }
+    voicePlayer.stop();
+    errorOccurred=false;finalText='';base=input.value.trim();
+    try{
+      const rec=new Mic();
+      rec.lang='ko-KR';
+      rec.interimResults=true;
+      rec.continuous=false;
+      rec.maxAlternatives=1;
+      recognizer=rec;active=true;
+      rec.onstart=()=>inform('듣고 있어요. 한국어로 편하게 말씀해 주세요…',true);
+      rec.onresult=event=>{
+        let confirmed='',draft='';
+        for(let i=0;i<event.results.length;i++){
+          const one=event.results[i];
+          const words=one?.[0]?.transcript||'';
+          if(one.isFinal)confirmed+=' '+words;
+          else draft+=' '+words;
+        }
+        if(confirmed.trim())finalText=confirmed.trim();
+        const shown=[base,confirmed.trim(),draft.trim()].filter(Boolean).join(' ').trim();
+        if(shown){
+          input.value=shown.slice(0,2400);
+          input.style.height='auto';input.style.height=Math.min(input.scrollHeight,180)+'px';
+        }
+        if(finalText){
+          inform('말씀을 알아들었어요. 자동 전송하고 있어요…',true);
+          try{rec.stop();}catch{}
+        }
+      };
+      rec.onerror=event=>{
+        errorOccurred=true;
+        inform(errorText(event.error),false);
+      };
+      rec.onend=()=>{
+        if(recognizer!==rec)return;
+        const said=finalText.trim();
+        const hadError=errorOccurred;
+        recognizer=null;active=false;finalText='';
+        update();
+        if(!hadError&&said){
+          const complete=[base,said].filter(Boolean).join(' ').trim().slice(0,2400);
+          base='';
+          inform('말씀하신 내용을 전송했어요.');
+          // Only one final transcript is submitted, never an interim result.
+          if(complete&&!busy)sendMessage(complete);
+        }else if(!hadError){
+          inform('말소리가 정확히 인식되지 않았어요. 다시 시도해 주세요.');
+        }
+      };
+      rec.start();
+      update();
+      inform('마이크 연결 중이에요. 말을 시작해 주세요…',true);
+    }catch(e){
+      recognizer=null;active=false;
+      inform('마이크를 시작하지 못했어요. Safari 권한을 확인해 주세요.');
+      update();
+    }
+  }
+  btn?.addEventListener('click',toggle);
+  update();
+  return {cancel,update,supported};
+})();
+
 function addMessage(role,content,{pending=false,safety='none'}={}){
   const wrapper=element('article','msg '+role);
   wrapper.append(element('div','who',role==='user'?'나':'마음결 · 심리상담 대화'));
@@ -218,12 +338,13 @@ function addMessage(role,content,{pending=false,safety='none'}={}){
 }
 function updateIntro(){const has=messages.length>0;intro.hidden=has;suggestions.hidden=has;$('historySummary').textContent=has?'대화를 이어가고 있어요.':'첫 이야기를 기다리고 있어요.';}
 async function sendMessage(content){
+  speechInput.cancel();
   const text=String(content||'').trim();if(!text||busy)return;
   if(!$('externalConsentWrap').hidden&&!$('externalConsent').checked){
     alert('외부 대화 처리 서비스에 전송하는 데 동의한 뒤 이용해 주세요.');return;
   }
   voicePlayer.startReply();
-  busy=true;send.disabled=true;input.value='';input.style.height='auto';
+  busy=true;send.disabled=true;speechInput.update();input.value='';input.style.height='auto';
   $('readyText').textContent='말씀을 듣고 있어요';
   messages.push({role:'user',content:text});addMessage('user',text);updateIntro();
   const pending=addMessage('assistant','마음결이 답변을 준비하고 있어요…',{pending:true});
@@ -266,14 +387,14 @@ async function sendMessage(content){
     addMessage('assistant',e.message||'대화 연결이 원활하지 않습니다.');
     if(messages.at(-1)?.role==='user')messages.pop();
   }finally{
-    busy=false;send.disabled=false;$('readyText').textContent='당신의 속도로 이야기해요';input.focus();
+    busy=false;send.disabled=false;speechInput.update();$('readyText').textContent='당신의 속도로 이야기해요';input.focus();
   }
 }
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();sendMessage(input.value);});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendMessage(input.value);}});
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,180)+'px';});
 document.querySelectorAll('[data-message]').forEach(b=>b.addEventListener('click',()=>{selectView('talk');sendMessage(b.dataset.message);}));
-function resetChat(){if(busy)return;voicePlayer.stop();messages.length=0;messageList.replaceChildren();$('aboutPanel').hidden=true;updateIntro();input.value='';selectView('talk');input.focus();}
+function resetChat(){if(busy)return;speechInput.cancel();voicePlayer.stop();messages.length=0;messageList.replaceChildren();$('aboutPanel').hidden=true;updateIntro();input.value='';selectView('talk');input.focus();}
 $('newChat').addEventListener('click',resetChat);$('clearChat').addEventListener('click',resetChat);
 function selectView(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('aboutPanel').hidden=view!=='about';if(view==='about'){$('intro').hidden=true;$('suggestions').hidden=true;$('messages').hidden=true;}else{$('messages').hidden=false;updateIntro();if(view==='mood')document.querySelector('.rightbar').scrollIntoView({behavior:'smooth',block:'nearest'});}}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
