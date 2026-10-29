@@ -123,31 +123,64 @@ def upstream_message(status):
     return UPSTREAM_ERRORS.get(status,"외부 AI 제공업체에 요청하지 못했습니다. 관리자에게 문의해 주세요.")
 
 def check_free_model_startup():
-    # No user conversations are sent: a single harmless greeting checks model
-    # authentication, route availability, and provider privacy compatibility.
+    # Only non-sensitive synthetic greetings are sent. Probe at most two free
+    # Qwen-family models with identical privacy filtering.
+    global MODEL_NAME
     if not FREE_EXTERNAL:
         return
-    payload={
-        "model":MODEL_NAME,
-        "messages":[{"role":"user","content":"한국어로 안녕하세요라고만 말해주세요."}],
-        "max_tokens":48,
-        "stream":False,
-        "provider":{"data_collection":"deny"}
-    }
+    candidates=[MODEL_NAME]
+    fallback="qwen/qwen3-8b:free"
+    if MODEL_NAME != fallback and MODEL_NAME.endswith(":free"):
+        candidates.append(fallback)
     headers={"Content-Type":"application/json","Authorization":"Bearer "+MODEL_API_KEY}
-    try:
-        req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
-        with urlopen(req,timeout=22) as resp:
-            obj=json.load(resp)
-        choices=obj.get("choices") or []
-        success=bool(choices and choices[0].get("message",{}).get("content"))
-        print("FREE_QWEN_PROBE", "ok" if success else "empty_response", flush=True)
-    except HTTPError as exc:
-        print("FREE_QWEN_PROBE", "upstream_http_"+str(exc.code),flush=True)
-    except (URLError, TimeoutError) as exc:
-        print("FREE_QWEN_PROBE", "connection_error_"+type(exc).__name__,flush=True)
-    except Exception as exc:
-        print("FREE_QWEN_PROBE", "response_error_"+type(exc).__name__,flush=True)
+    for candidate in candidates:
+        if not candidate.endswith(":free"):
+            break
+        payload={
+            "model":candidate,
+            "messages":[{"role":"user","content":"안녕하세요. 한 문장으로 인사해 주세요."}],
+            "max_tokens":180,
+            "stream":False,
+            "provider":{"data_collection":"deny"}
+        }
+        try:
+            req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
+            with urlopen(req,timeout=28) as resp:
+                obj=json.load(resp)
+            choices=obj.get("choices") or []
+            success=bool(choices and choices[0].get("message",{}).get("content"))
+            if success:
+                MODEL_NAME=candidate
+                print("FREE_QWEN_PROBE ok "+candidate,flush=True)
+                return
+            print("FREE_QWEN_PROBE empty_response "+candidate,flush=True)
+        except HTTPError as exc:
+            detail=""
+            try:
+                payload_error=json.loads(exc.read(4096)).get("error",{})
+                if isinstance(payload_error,dict):
+                    msg=str(payload_error.get("message","")).lower()
+                    meta=payload_error.get("metadata") or {}
+                    if isinstance(meta,dict) and meta.get("failed_routing_step"):
+                        detail=" failed_routing_step="+re.sub(r"[^a-zA-Z0-9_-]","",str(meta["failed_routing_step"]))[:45]
+                    elif any(k in msg for k in ("privacy","data policy","data collection","guardrail")):
+                        detail=" provider_privacy_filter"
+                    elif any(k in msg for k in ("no endpoints","no provider","not available")):
+                        detail=" no_eligible_provider"
+                    elif "model" in msg:
+                        detail=" model_unavailable"
+            except (ValueError,AttributeError,TypeError):
+                pass
+            print("FREE_QWEN_PROBE upstream_http_"+str(exc.code)+" "+candidate+detail,flush=True)
+            if exc.code not in (404,503,502,529):
+                return
+        except (URLError, TimeoutError) as exc:
+            print("FREE_QWEN_PROBE connection_error_"+type(exc).__name__,flush=True)
+            return
+        except Exception as exc:
+            print("FREE_QWEN_PROBE response_error_"+type(exc).__name__,flush=True)
+            return
+    print("FREE_QWEN_PROBE all_eligible_qwen_providers_failed",flush=True)
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args): pass
