@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "source": "KMI: Korean Motivational Interviewing Dialogues for Psychotherapy, Kim et al., NAACL 2025",
+  "source_url": "https://aclanthology.org/2025.naacl-long.541/",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "notice": "Selected, modified subset of original synthetic KMI conversations for in-context examples. NOT additional model training or clinical certification.",
+  "selection": "Hand-filtered by transparent length/PII/topic/strategy heuristics from 2026-10-30 repository KMI train shards; assess for quality before production use.",
+  "examples": [
+    {
+      "user": "저는 이 부정적인 생각들에 휩쓸리지 않고 이를 긍정적인 방향으로 전환할 수 있는 마음의 힘을 기르고 싶어요.",
+      "assistant": "부정적인 생각들을 긍정적으로 전환하고자 할 때, 어떤 방법을 생각해 보셨나요?",
+      "technique": "Open Question",
+      "topic": "정신건강"
+    },
+    {
+      "user": "저는 이 상황을 어떻게 개선해야 할지에 대한 구체적인 방법을 찾지 못하고 있어요.",
+      "assistant": "이 상황을 개선하기 위해 시도해 보고 싶은 방법이나 생각해 본 전략이 있나요?",
+      "technique": "Open Question",
+      "topic": "정신건강"
+    },
+    {
+      "user": "저 뿐만 아니라 엄마도 서로를 더 잘 이해할 수 있게 되었으면 좋겠어요.",
+      "assistant": "엄마와 더 깊은 이해를 나누기 위해 어떤 방법을 시도해보고 싶으신가요?",
+      "technique": "Open Question",
+      "topic": "정신건강"
+    },
+    {
+      "user": "그 마음을 바탕으로 실제로 목표를 달성하기 위해 노력해보고 싶어요.",
+      "assistant": "그 목표를 달성하기 위해 어떤 작은 노력을 시작으로 생각하고 계신가요?",
+      "technique": "Open Question",
+      "topic": "정신건강"
+    },
+    {
+      "user": "아직 그런 경험이 있다고 말하기는 어렵습니다.",
+      "assistant": "그렇다면 어떤 일이나 상황이 조금이라도 위로가 되었는지 듣고 싶습니다.",
+      "technique": "Open Question",
+      "topic": "정신건강"
+    },
+    {
+      "user": "제가 좀 더 혼자의 시간을 가지며 저만의 것들을 하고 싶다고 말하고 싶어요.",
+      "assistant": "혼자만의 시간을 원하며 개인적인 활동을 하고 싶어하는 마음이 강하게 드러나네요.",
+      "technique": "Complex Reflection",
+      "topic": "정신건강"
+    },
+    {
+      "user": "저도 주변 사람들에게 피해를 주지 않기 위해 더 건강한 방법을 찾고 싶어요.",
+      "assistant": "주변 사람들을 생각하는 마음이 문제를 해결하려는 큰 힘이 될 수 있겠네요.",
+      "technique": "Complex Reflection",
+      "topic": "정신건강"
+    },
+    {
+      "user": "그렇습니다, 그 압박감 때문에 더 많이 포기하고 싶어지는 것 같아요.",
+      "assistant": "압박감이 너무 커지면 자연스럽게 회피하고자 하는 마음이 들기도 하지요.",
+      "technique": "Complex Reflection",
+      "topic": "정신건강"
+    },
+    {
+      "user": "제 마음을 조금씩 열고 다른 사람들과의 소통을 늘리고 싶습니다.",
+      "assistant": "소통을 통해 마음을 열고자 하는 의지가 이 어려움을 극복하는 데 큰 역할을 할 것입니다.",
+      "technique": "Complex Reflection",
+      "topic": "정신건강"
+    },
+    {
+      "user": "사실 저는 사람들과 얘기할 때 새로운 주제를 발견하거나, 같이 무엇인가를 배우고 경험하는 것이 가장 흥미로워요.",
+      "assistant": "새로운 주제를 발검하거나 배움의 과정에 있을 때 어떤 느낌이 드나요?",
+      "technique": "Open Question",
+      "topic": "대인관계"
+    },
+    {
+      "user": "한 친구가 제 이야기를 들을 때마다 부정적으로 반응하거나 제 근황에 대해 신경 쓰지 않는 태도를 보여서요.",
+      "assistant": "그 친구와의 관계가 어떻게 변화했으면 좋겠는지 상상해보신 적이 있나요?",
+      "technique": "Open Question",
+      "topic": "대인관계"
+    },
+    {
+      "user": "그렇습니다, 제가 어떻게 더 원활하게 그들과 소통할 수 있을지 알고 싶어요.",
+      "assistant": "어떤 방식으로 그들과 교류하고 싶은지 좀 더 구체적으로 설명해주실 수 있나요?",
+      "technique": "Open Question",
+      "topic": "대인관계"
+    },
+    {
+      "user": "정확해요, 제 감정을 어떻게 조절해야 할지 방법을 모르겠습니다.",
+      "assistant": "감정을 조절하고 싶을 때, 어떤 순간이나 상황이 가장 도전적이라고 느껴지시나요?",
+      "technique": "Open Question",
+      "topic": "대인관계"
+    },
+    {
+      "user": "감사합니다만, 그 감정이 저를 더 어렵게 만들기도 해요.",
+      "assistant": "타인의 요구를 거절할 때 자신을 보호하기 위해 어떤 방법을 생각해 보셨나요?",
+      "technique": "Open Question",
+      "topic": "대인관계"
+    },
+    {
+      "user": "사실, 구체적으로 어떻게 해야 할지는 잘 모르겠어요.",
+      "assistant": "감정을 표현하는 데 어려움을 겪을 때 어떤 상황이나 순간이 특히 그러하셨나요?",
+      "technique": "Open Question",
+      "topic": "대인관계"
+    },
+    {
+      "user": "요즘 몇 년 전 사별한 후로 사람들과의 관계에서 점점 더 많은 어려움을 겪고 있습니다. 작은 일에도 쉽게 상처받고, 온갖 부정적인 생각들이 머릿속을 가득 메우고 있어요. 상황이 이렇게 되어버린 이유를 잘 모르겠습니다.",
+      "assistant": "그저 사별이라는 큰 변화를 겪으셨을 때부터 관계 속에서의 어려움을 느끼게 된 것 같군요.",
+      "technique": "Complex Reflection",
+      "topic": "대인관계"
+    },
+    {
+      "user": "회사에서도, 개인적인 관계에서도 사소한 일에 예민하게 반응하고 화를 내는 일이 늘었어요. 자칫 잘못된 표정이나 반응에도 오해하고 상처받는 경우가 많습니다.",
+      "assistant": "소통에서 오는 어려움이 일상생활 속에서도 여러 가지 긴장과 갈등의 원인이 되고 있군요.",
+      "technique": "Complex Reflection",
+      "topic": "대인관계"
+    },
+    {
+      "user": "그렇습니다. 사람들에게 도움을 줄 때마다 결국엔 뒤통수를 맞는 기분이라, 점점 사람들을 멀리하게 되는 제 자신을 발견하게 됩니다.",
+      "assistant": "도움을 줄 때마다 상처받는 경험이 신뢰를 잃게 만들고, 그로 인해 타인과의 거리를 두게 되었국요.",
+      "technique": "Complex Reflection",
+      "topic": "대인관계"
+    },
+    {
+      "user": "사실 제가 좋아하는 것들은 디자인과 관련이 얕지만, 그것들이 제 직업 선택에 어떻게 도움이 될지는 상상하기 어렵습니다.",
+      "assistant": "좋아하는 것들과 디자인이 어떻게 연결될 수 있을지에 대한 생각을 더 깊이 탐색해볼 수 있을까요?",
+      "technique": "Open Question",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "어떤 상황에서든 마음이 무겁지 않고 가벼운 마음으로 접근할 수 있는 그런 관계요.",
+      "assistant": "어떤 상황에서도 마음이 가볍게 접근할 수 있도록 만드는 것에 있어 가장 도전적인 부분은 무엇인가요?",
+      "technique": "Open Question",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "공부할 때 핸드폰을 멀리 두고 조용한 환경에서 집중할 수 있도록 해보려고 합니다.",
+      "assistant": "공부할 때 핸드폰을 멀리 두는 것 외에도 집중력을 향상시키기 위한 방법을 고려해 보셨나요?",
+      "technique": "Open Question",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "안녕하세요, 요즘 제가 너무 예민해지고 자주 우울해지는 걸 느껴요.",
+      "assistant": "이러한 예민함과 우울함이 어떤 상황에서 더 자주 나타나시는지 이야기해주실 수 있나요?",
+      "technique": "Open Question",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "정말 그 방법을 찾아가는 것이 쉽지 않다고 느껴집니다.",
+      "assistant": "스스로에게 친절해지기 위한 방법을 찾는 과정에서 어떤 어려움을 겪고 계시나요?",
+      "technique": "Open Question",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "그래서 더 우울하고 불안한 감정이 커져요.",
+      "assistant": "어떻게 하면 우울하고 불안한 감정을 조금이라도 완화할 수 있다고 생각하시나요?",
+      "technique": "Open Question",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "주로 친구들과 함께 있을 때나 사람들과 비교하게 될 때 이런 감정들이 극대화되는 것 같아요.",
+      "assistant": "사회적 상황에서 자신을 다른 사람들과 비교하실 때 더 큰 감정적 어려움을 겪고 계시는 것 같네요.",
+      "technique": "Complex Reflection",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "안녕하세요, 사실 제가 변화를 꺼려하는 성향 때문에 삶이 무료하고 재미없다는 생각이 들어요.",
+      "assistant": "변화에 대한 거부감이 있음에도 불구하고 무료함과 재미없음을 느끼는 지점을 인식하고 계시는군요.",
+      "technique": "Complex Reflection",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "제가 제 건강이나 감정 상태에 대해 솔직하게 말하지 못하는 것이 걱정돼요.",
+      "assistant": "그 부분이 스스로에게도, 타인과의 관계에서도 중요하다고 느끼시는군요.",
+      "technique": "Complex Reflection",
+      "topic": "자아·성격"
+    },
+    {
+      "user": "안녕하세요, 최근에 저는 일 때문에 많이 힘들어요. 제가 지금 하고 있는 일이 손에 부담을 주는 일들이 많아서, 손 상태가 너무 안 좋아졌어요.",
+      "assistant": "그런 상황에서 일을 계속하기 위해 어떤 조치를 취하셨는지 여쭤봐도 될까요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "제 주변 친구들의 진로가 점점 확실해지는 것을 보면서 비교하게 되고, 또 제 결정이 옳은 건지 자꾸만 의심하게 됩니다.",
+      "assistant": "친구들의 진로와 자신의 의사 결정을 비교하면서 어떤 감정들을 느끼시나요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "공사현장을 옮겨 다니며 근무하는 방식과, 사무직에서는 겪지 못했던 육체적 부상의 위험성이 큰 차이점이었습니다.",
+      "assistant": "공사현장과 사무직 근무를 경험하면서 본인에게 중요한 것이 무엇인지 발견하신 부분이 있나요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "그렇다고 하면 제가 이 경험을 통해 어떤 방향으로 나아가야 할지 더 명확히 생각해봐야 할 것 같습니다.",
+      "assistant": "이 경험을 통해 어떤 방향으로 나아가고 싶은지 구체적으로 설명해주실 수 있나요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "예, 소설가라는 꿈과 함께 간호학과 진학을 준비하고 있는데, 최근 출판 제안을 받게 되었거든요.",
+      "assistant": "소설가로서의 꿈과 간호학과 진학 사이에서 어떤 기준으로 선택을 고민하고 계신가요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "그러나 지금 코로나 때문에 그런 활동들도 제한적이여서, 어떻게 시작해야 할지 막막합니다.",
+      "assistant": "코로나로 인한 제한에도 불구하고, 어떤 방식으로라도 실무적 경험을 찾거나 사람들과 만날 수 있는 방법이 있을지 고민해 보셨나요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "그래서 이 결정이 정말 제 인생에 있어서 바람직한 선택인지 확신이 서지 않습니다.",
+      "assistant": "그 결정을 고민하면서 가장 중요하게 생각하는 기준은 무엇인지 알려주실 수 있나요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "제가 잘못된 선택을 한다면 어떻게 대처할 수 있을지에 대해서도 생각해보고 있어요.",
+      "assistant": "만약 선택이 기대와 다르게 전개된다면 어떤 지원이나 방법이 필요할 것 같나요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "저는 어떤 선택이 저에게 장기적으로도 이득이 될지를 고민하고 있어요.",
+      "assistant": "장기적 이득에 대해 생각할 때 어떤 기준이나 가치를 중요하게 여기고 계신가요?",
+      "technique": "Open Question",
+      "topic": "취업·진로"
+    },
+    {
+      "user": "저는 노력해도 저만 제자리걸음인 것 같고, 공부에 있어서 정말 힘이 든다는 생각이 들어요.",
+      "assistant": "공부에서 힘이 든다고 느낄 때 어떤 방식으로 자신을 도우려고 시도하셨나요?",
+      "technique": "Open Question",
+      "topic": "학업·고시"
+    },
+    {
+      "user": "중학교 때의 어려움 때문에 고등학교를 진학하지 않았는데, 지금 다시 학교를 다닐까 고민하고 있어요.",
+      "assistant": "과거의 경험이 지금의 고민으로 이어졌군요. 과거보다 나아지고 싶은 마음이 있으신 것 같습니다.",
+      "technique": "Complex Reflection",
+      "topic": "학업·고시"
+    },
+    {
+      "user": "공부를 계속하려고 노력은 하지만, 점점 더 폰으로 시간을 보내고 있어요.",
+      "assistant": "공부에 집중하고자 하는 뜻과 폰으로 시간을 보내는 행동 사이에 갈등이 있군요.",
+      "technique": "Complex Reflection",
+      "topic": "학업·고시"
+    },
+    {
+      "user": "저에게 흥미를 느끼게 하고, 앞으로의 목표에 도움이 될 수 있는지를 중요하게 생각할 것 같아요.",
+      "assistant": "흥미와 목표 달성이라는 중요한 기준을 바탕으로 자신에게 의미 있는 공부와 활동을 찾아가는 과정이 앞으로 유익할 것입니다.",
+      "technique": "Advise",
+      "topic": "학업·고시"
+    },
+    {
+      "user": "공부에 대한 압박감과 그것을 포기 못 하는 저 자신 사이에서 너무 갈등하고 있어요.",
+      "assistant": "공부와 관련한 압박감과 그것을 놓지 못하는 본인 사이의 갈등을 많이 느끼고 계시네요.",
+      "technique": "Simple Reflection",
+      "topic": "학업·고시"
+    },
+    {
+      "user": "저도 어지러움이 줄어들면 일상에 집중하기 더 좋을 것 같아요.",
+      "assistant": "어지러움이 줄어들면 일상에 더 집중할 수 있을 것 같다는 생각을 하고 계시군요.",
+      "technique": "Simple Reflection",
+      "topic": "학업·고시"
+    },
+    {
+      "user": "항상 스스로를 이겨야 하는 상대로 보게 됐어요.",
+      "assistant": "어떻게 하면 스스로를 이겨야 하는 상대가 아닌, 이해하고 돌볼 수 있는 사람으로 볼 수 있을까요?",
+      "technique": "Open Question",
+      "topic": "가족"
+    },
+    {
+      "user": "엄마에게 제 진심을 담아, 제가 이 분야에 얼마나 많은 노력을 기울이고 있는지와 왜 이 길을 선택했는지 설명하고 싶어요.",
+      "assistant": "진심을 담아 자신의 노력과 선택의 이유를 엄마에게 전달하길 원하시는군요.",
+      "technique": "Complex Reflection",
+      "topic": "가족"
+    },
+    {
+      "user": "어머니와 조용한 장소에서 마음을 열고 서로의 생각을 진솔하게 나눌 수 있는 시간을 갖고 싶습니다.",
+      "assistant": "조용한 장소에서 어머니와 진솔한 대화를 나누길 원하시며, 그런 대화를 통해 더 나은 이해와 소통을 기대하시는군요.",
+      "technique": "Complex Reflection",
+      "topic": "가족"
+    }
+  ]
+}
