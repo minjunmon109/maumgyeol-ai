@@ -56,6 +56,7 @@ async function loadAccount(){
     inform('구글 계정으로 회원가입하거나 로그인할 수 있습니다.');
     authentication.onAuthStateChanged(auth,async user=>{
       currentUser=user;uid=user?.uid||null;
+      account.ready=!!user;
       if(!user){
         gate.hidden=false;historyMessage('로그인한 뒤 대화 내역을 확인할 수 있습니다.');
         profile.textContent='로그인 필요';return;
