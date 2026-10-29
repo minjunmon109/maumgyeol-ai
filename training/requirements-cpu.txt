@@ -1,0 +1,7 @@
+# CPU-only fine-tuning (no CUDA/bitsandbytes)
+# Use Python 3.11/3.12; install an appropriate CPU PyTorch build.
+torch>=2.5,<3
+transformers>=4.55,<5
+peft>=0.17,<1
+accelerate>=1.8,<2
+safetensors>=0.5,<1
