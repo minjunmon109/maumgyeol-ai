@@ -50,6 +50,8 @@ def check_url(value, suffix=None):
 
 
 def gate(manifest, audit, review, webgpu):
+    if manifest.get("smoke_test_only") is True:
+        raise ValueError("Smoke-only trial model cannot be promoted")
     if manifest.get("status") != "trained_not_safety_validated":
         raise ValueError("No confirmed CPU LoRA training")
     if manifest.get("base_model") != BASE or not manifest.get("base_compatible_with_site"):
