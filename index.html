@@ -48,6 +48,20 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .composer-footer>span{font-size:9px}.msg .bubble{font-size:13px}
 }
 
+
+.adaptive-mode{margin:0 0 12px;border:1px solid #dce7d9;border-radius:13px;background:linear-gradient(100deg,#f1f7ef,#fafbf7);padding:12px 15px;display:flex;align-items:center;gap:12px;color:#597457}
+.adaptive-mark{height:31px;width:31px;border-radius:50%;display:grid;place-items:center;background:#e0ecdc;color:#67866a;font-size:18px;flex:0 0 auto}
+.adaptive-mode strong{font-size:12px;display:block;line-height:1.5;font-weight:600}
+.adaptive-mode small{font-size:10px;line-height:1.7;display:block;margin-top:2px;color:#8a9b85}
+.adaptive-auto{margin-left:auto;background:#e4edde;border:1px solid #d0e0cd;border-radius:30px;padding:4px 8px;font-size:10px;color:#608060;flex:0 0 auto}
+.composer-footer .mic-button{width:auto;min-height:35px;height:auto;padding:5px 10px;flex:0 0 auto;margin-left:auto;margin-right:8px;border-radius:11px;border:1px solid #c9dac7;background:#e9f1e5;color:#547a54;font-size:11px;font-weight:600;cursor:pointer}
+.composer-footer .mic-button.listening{background:#fce9e4;color:#aa5e54;border-color:#e9b5ac;animation:mic-beat 1.1s ease-in-out infinite}
+.composer-footer .mic-button:disabled{opacity:.45;cursor:not-allowed;animation:none}
+.composer-footer .voice-toggle{margin-left:0;margin-right:9px}
+.speech-hint{margin:9px 3px 2px;font-size:10px;line-height:1.65;color:#8c9c88}
+.speech-hint.active{color:#b46452;font-weight:500}
+@keyframes mic-beat{0%,100%{box-shadow:0 0 0 0 rgba(194,105,90,.18)}50%{box-shadow:0 0 0 5px rgba(194,105,90,.04)}}
+@media(max-width:620px){.adaptive-mode{gap:8px;padding:10px}.adaptive-mode strong{font-size:11px}.adaptive-mode small{font-size:9px}.adaptive-auto{font-size:9px}.composer-footer{gap:4px}.composer-footer>span{display:none}.composer-footer .mic-button{margin-left:auto;margin-right:3px;padding:7px 9px}.composer-footer .voice-toggle{margin-right:5px;padding:6px}.speech-hint{font-size:9px}}
 </style></head>
 <body>
 <div class="shell">
@@ -66,7 +80,7 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 <section id="suggestions" class="suggestions" aria-label="대화 시작 주제"><button class="suggestion" data-message="친구와 멀리 떨어져 지내다 보니 외롭고 연락하는 것도 부담스러워졌어요."><span class="suggestion-icon warm">♡</span><span><b>친구·관계 고민</b><small>멀어지는 것 같은 마음, 관계의 거리</small></span><em>↗</em></button><button class="suggestion" data-message="요즘 생각이 너무 많아서 쉬어도 쉬는 것 같지 않아요."><span class="suggestion-icon lavender">☾</span><span><b>걱정과 불안</b><small>꼬리를 무는 생각을 천천히 정리</small></span><em>↗</em></button><button class="suggestion" data-message="자꾸 저를 탓하게 되고 자신감이 떨어져요."><span class="suggestion-icon green">✧</span><span><b>자존감·자기비난</b><small>나를 바라보는 마음을 돌아보기</small></span><em>↗</em></button><button class="suggestion" data-message="조언보다 우선 그냥 제 이야기를 들어줬으면 좋겠어요."><span class="suggestion-icon sand">♧</span><span><b>그냥 털어놓고 싶어요</b><small>해결보다 먼저, 충분히 들어주기</small></span><em>↗</em></button></section>
 <section id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="대화 내용"></section>
 <section id="aboutPanel" class="about-panel" hidden><div class="eyebrow">마음결을 소개합니다</div><h2>이야기가 잠시 쉬어갈 수 있도록.</h2><p>마음결은 경청과 감정 반영을 바탕으로 고민과 관계, 스트레스에 관해 함께 정리하는 심리상담 대화 공간입니다.</p><p>마음결은 자동 대화 서비스이며 실제 상담사나 의료전문가의 진단·치료·응급 대응을 대신하지 않습니다. 위급한 상황에서는 119 또는 자살예방상담전화 109로 연락해 주세요.</p></section>
-<div class="composer-area"><div class="composer-head"><span>지금 어떤 방식으로 함께할까요?</span><small id="readyText">당신의 속도로 이야기해요</small></div><div class="mode-picker" id="talkModes" role="group" aria-label="대화 방식 선택"><button type="button" class="mode-option" data-mode="listen" aria-pressed="false"><span>♡</span> 그냥 들어줘</button><button type="button" class="mode-option selected" data-mode="reflect" aria-pressed="true"><span>✧</span> 마음을 정리하고 싶어</button><button type="button" class="mode-option" data-mode="steps" aria-pressed="false"><span>↗</span> 함께 방법을 찾아줘</button></div><p class="mode-caption" id="modeCaption">상황과 감정을 천천히 살펴보고, 필요한 만큼만 질문합니다.</p><label id="externalConsentWrap" hidden style="display:none;align-items:flex-start;gap:8px;padding:10px 12px;margin:8px 0 5px;background:#f1f5ed;border-radius:9px;font-size:11px;line-height:1.7;color:#5b7356"><input id="externalConsent" type="checkbox" style="margin-top:3px;flex:0 0 auto" /><span>외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 모델 파일 다운로드나 별도 API 키는 필요하지 않습니다. 제공업체의 데이터 보존·학습 정책은 다를 수 있으며 비밀유지가 보장되지 않습니다. 개인정보·실제 상담 기록 등 민감한 내용은 입력하지 마세요.</span></label><form id="chatForm" class="composer"><label class="sr-only" for="messageBox">하고 싶은 이야기</label><textarea id="messageBox" rows="2" maxlength="2400" placeholder="무슨 일이 있었는지, 지금 어떤 마음인지 편하게 적어 주세요."></textarea><div class="composer-footer"><span>✧ &nbsp; 편하게 말씀해 주세요</span><button type="button" id="voiceToggle" class="voice-toggle" aria-label="자동 음성 끄기" aria-pressed="true" title="답변을 자동으로 읽어줍니다">🔊 음성 켜짐</button><button type="submit" id="sendButton" title="메시지 보내기" aria-label="메시지 보내기">↑</button></div></form><p class="disclaimer">마음결은 AI 기반 자동 대화 서비스이며 전문 심리상담사의 상담·진단·치료를 대신하지 않습니다. 대화는 현재 서버에 저장하지 않지만 답변을 위해 외부 제공업체로 전송되며, 완전한 비밀유지를 보장하지 않습니다.</p></div>
+<div class="composer-area"><div class="composer-head"><span>지금 어떤 방식으로 함께할까요?</span><small id="readyText">당신의 속도로 이야기해요</small></div><div class="adaptive-mode" aria-label="상담 방식 자동 조절"><span class="adaptive-mark">✧</span><div><strong>마음결이 대화의 흐름에 맞춰 함께해요</strong><small>필요할 때는 들어주고, 마음을 정리하고, 방법을 함께 찾아요.</small></div><span class="adaptive-auto">자동</span></div><label id="externalConsentWrap" hidden style="display:none;align-items:flex-start;gap:8px;padding:10px 12px;margin:8px 0 5px;background:#f1f5ed;border-radius:9px;font-size:11px;line-height:1.7;color:#5b7356"><input id="externalConsent" type="checkbox" style="margin-top:3px;flex:0 0 auto" /><span>외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 모델 파일 다운로드나 별도 API 키는 필요하지 않습니다. 제공업체의 데이터 보존·학습 정책은 다를 수 있으며 비밀유지가 보장되지 않습니다. 개인정보·실제 상담 기록 등 민감한 내용은 입력하지 마세요.</span></label><form id="chatForm" class="composer"><label class="sr-only" for="messageBox">하고 싶은 이야기</label><textarea id="messageBox" rows="2" maxlength="2400" placeholder="무슨 일이 있었는지, 지금 어떤 마음인지 편하게 적어 주세요."></textarea><div class="composer-footer"><span>✧ &nbsp; 편하게 말씀해 주세요</span><button type="button" id="micButton" class="mic-button" aria-label="음성으로 말하기" aria-pressed="false" title="마이크를 누르고 말하면 자동 전송됩니다">🎙 말하기</button><button type="button" id="voiceToggle" class="voice-toggle" aria-label="자동 음성 끄기" aria-pressed="true" title="답변을 자동으로 읽어줍니다">🔊 음성 켜짐</button><button type="submit" id="sendButton" title="메시지 보내기" aria-label="메시지 보내기">↑</button></div></form><p id="speechHint" class="speech-hint" role="status" aria-live="polite">마이크를 누르고 한국어로 말하면, 글자로 바뀌어 자동 전송됩니다. 음성 인식은 브라우저 서비스에서 처리될 수 있어요.</p><p class="disclaimer">마음결은 AI 기반 자동 대화 서비스이며 전문 심리상담사의 상담·진단·치료를 대신하지 않습니다. 대화는 현재 서버에 저장하지 않지만 답변을 위해 외부 제공업체로 전송되며, 완전한 비밀유지를 보장하지 않습니다.</p></div>
 </main>
 <aside class="rightbar" aria-label="마음 돌봄"><div class="right-eyebrow">내 마음을 돌보는 시간 <span>✧</span></div><section class="breathing-panel"><div class="section-eyebrow">마음에 여유 한 모금</div><h2>조금 천천히,<br>숨을 쉬어볼까요?</h2><p>바쁜 생각은 잠깐 내려두고<br>호흡에 가만히 머물러요.</p><div class="breath-ring" id="breathRing" aria-live="polite"><div id="breathText">♧<br><span>들이쉬고, 내쉬고</span></div></div><small id="breathLegend">들이쉬기 4초 &nbsp;|&nbsp; 멈추기 4초 &nbsp;|&nbsp; 내쉬기 6초</small><button class="breath-button" id="breathButton">1분 호흡 시작하기 <span>→</span></button><small class="breath-note">불편하면 자연스럽게 호흡해도 좋아요.</small></section>
 <section class="mood-panel"><div class="mood-head">지금의 마음은? <small>나를 위한 작은 체크인</small></div><div class="mood-options" id="moodOptions"><button data-mood="힘들어요" aria-label="힘들어요"><span>☹</span><small>힘들어요</small></button><button data-mood="지쳤어요" aria-label="지쳤어요"><span>⌢</span><small>지쳤어요</small></button><button data-mood="그저 그래요" aria-label="그저 그래요"><span>−</span><small>그저 그래요</small></button><button data-mood="괜찮아요" aria-label="괜찮아요"><span>⌣</span><small>괜찮아요</small></button><button data-mood="좋아요" aria-label="좋아요"><span>☺</span><small>좋아요</small></button></div><div class="mood-caption" id="moodCaption">어떤 기분이어도, 괜찮아요.</div></section>
@@ -78,23 +92,6 @@ const $=id=>document.getElementById(id);
 const messages=[];
 let busy=false,breathInterval=null,breathElapsed=0;
 const intro=$('intro'),suggestions=$('suggestions'),messageList=$('messages'),input=$('messageBox'),send=$('sendButton');
-const conversationModes={
-  listen:'해결책이나 질문보다 먼저 충분히 경청합니다.',
-  reflect:'상황과 감정을 천천히 살펴보고, 필요한 만큼만 질문합니다.',
-  steps:'마음을 먼저 살피고, 실천할 수 있는 작은 방향을 함께 찾습니다.'
-};
-let conversationMode='reflect';
-document.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{
-  if(busy)return;
-  conversationMode=btn.dataset.mode;
-  document.querySelectorAll('[data-mode]').forEach(b=>{
-    const selected=b.dataset.mode===conversationMode;
-    b.classList.toggle('selected',selected);
-    b.setAttribute('aria-pressed',String(selected));
-  });
-  $('modeCaption').textContent=conversationModes[conversationMode];
-}));
-
 function scrollBottom(){requestAnimationFrame(()=>{if(messages.length) messageList.lastElementChild?.scrollIntoView({block:'end',behavior:'smooth'});});}
 function element(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!=null)el.textContent=text;return el;}
 
@@ -233,7 +230,7 @@ async function sendMessage(content){
   let completed=false;
   try{
     const req={method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages,mode:conversationMode,external_consent:$('externalConsent').checked})};
+      body:JSON.stringify({messages,mode:"auto",external_consent:$('externalConsent').checked})};
     const res=await fetch('/api/chat/stream',req);
     if(!res.ok){const err=await res.json().catch(()=>({}));
       throw Error(err.error||'대화 연결이 원활하지 않습니다.');}
