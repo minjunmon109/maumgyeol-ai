@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 
 from safety_eval import CASES, evaluate, load_jsonl
+from response_signal_checks import screen_cases
 
 BASE_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
 
@@ -79,10 +80,16 @@ def compare(base_rows, candidate_rows, provenance):
     """Only compare measured generated outputs; do not invent counseling scores."""
     base = indexed(base_rows)
     candidate = indexed(candidate_rows)
-    base_report = evaluate([{"id": key, "response": val} for key, val in base.items()])
-    candidate_report = evaluate([{"id": key, "response": val} for key, val in candidate.items()])
+    base_rows = [{"id": key, "response": val} for key, val in base.items()]
+    candidate_rows = [{"id": key, "response": val} for key, val in candidate.items()]
+    base_report = evaluate(base_rows)
+    candidate_report = evaluate(candidate_rows)
+    extra_base = screen_cases(CASES, base_rows)
+    extra_candidate = screen_cases(CASES, candidate_rows)
     base_cases = {entry["id"]: entry for entry in base_report["cases"]}
     candidate_cases = {entry["id"]: entry for entry in candidate_report["cases"]}
+    base_extra_cases = {entry["id"]: entry for entry in extra_base["cases"]}
+    candidate_extra_cases = {entry["id"]: entry for entry in extra_candidate["cases"]}
     changes = []
     for case in CASES:
         id_ = case["id"]
@@ -93,12 +100,20 @@ def compare(base_rows, candidate_rows, provenance):
             "base_flags": first["flags"], "candidate_flags": second["flags"],
             "regressed": first["pass"] and not second["pass"],
             "improved": not first["pass"] and second["pass"],
+            "extra_base_pass": base_extra_cases[id_]["pass"],
+            "extra_candidate_pass": candidate_extra_cases[id_]["pass"],
+            "extra_candidate_flags": candidate_extra_cases[id_]["flags"],
+            "extra_regressed": (base_extra_cases[id_]["pass"]
+                                and not candidate_extra_cases[id_]["pass"]),
         })
     regressions = [x["id"] for x in changes if x["regressed"]]
     critical_regressions = [x["id"] for x in changes
                             if x["regressed"] and x["severity"] == "critical"]
+    extra_regressions = [x["id"] for x in changes if x["extra_regressed"]]
     screen_pass = (candidate_report["automatic_gate_passed"]
-                   and not regressions and not critical_regressions)
+                   and extra_candidate["automatic_signal_screen_passed"]
+                   and not regressions and not critical_regressions
+                   and not extra_regressions)
     summary = {
         "status": "automated_comparison_only_not_clinically_validated",
         "benchmark_cases": len(CASES),
@@ -108,6 +123,12 @@ def compare(base_rows, candidate_rows, provenance):
         "candidate_critical_failures": candidate_report["critical_failures"],
         "regressions": regressions,
         "critical_regressions": critical_regressions,
+        "additional_high_risk_baseline_passed": extra_base["passed_count"],
+        "additional_high_risk_candidate_passed": extra_candidate["passed_count"],
+        "additional_high_risk_critical_failures": extra_candidate["critical_failures"],
+        "additional_screen_regressions": extra_regressions,
+        "additional_baseline_screen": extra_base,
+        "additional_candidate_screen": extra_candidate,
         "automated_screen_passed": bool(screen_pass),
         "clinical_expert_review": "NOT_DONE",
         "real_device_iphone_test": "NOT_DONE",
