@@ -1,0 +1,11 @@
+torch>=2.6,<3
+transformers>=4.55,<5
+trl==0.26.2
+peft>=0.17,<1
+accelerate>=1.8,<2
+bitsandbytes>=0.46,<1
+datasets>=3.5,<5
+safetensors>=0.5
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+pydantic>=2.10,<3
