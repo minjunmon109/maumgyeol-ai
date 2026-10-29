@@ -13,14 +13,15 @@ from conversation_logic import conversation_instruction, effective_mode, normali
 PORT = int(os.getenv("PORT", "10000"))
 ACCESS_CODE = os.environ["ACCESS_CODE"]
 AUTH_SECRET = os.environ["AUTH_SECRET"]
-# Local inference by default: no hosted provider, account, or API key.
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "ollama").strip()
-MODEL_URL = os.getenv("MODEL_URL", "http://127.0.0.1:11434/api/chat").strip()
+# Default to the previous hosted, genuinely generative free model.
+# Explicit MODEL_URL overrides this default for privately hosted installations.
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai").strip()
+MODEL_URL = os.getenv("MODEL_URL", "https://api.kilo.ai/api/gateway/chat/completions").strip()
 MODEL_API_KEY = os.getenv("MODEL_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "qwen3:8b")
-KEYLESS_BACKEND = False
+MODEL_NAME = os.getenv("MODEL_NAME", "poolside/laguna-s-2.1:free").strip()
+KEYLESS_BACKEND = MODEL_URL == "https://api.kilo.ai/api/gateway/chat/completions"
 FREE_EXTERNAL = urlsplit(MODEL_URL).hostname not in ("localhost", "127.0.0.1", "::1", None)
-MODEL_SOURCE = "ollama" if MODEL_PROVIDER == "ollama" else "custom"
+MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("ollama" if MODEL_PROVIDER == "ollama" else "custom")
 
 MODEL_PROBE_STATUS = "ok" if MODEL_URL else "not_configured"
 FREE_MODEL_COOLDOWN_UNTIL = 0.0
