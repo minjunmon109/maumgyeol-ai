@@ -9,6 +9,7 @@ long sequences). Runtime may be hours/days; choose a smaller --model only for
 experiments, NOT for shipping an incompatible website adapter.
 """
 import argparse
+import glob
 import hashlib
 import json
 import os
@@ -27,34 +28,42 @@ def sha256(path):
     return block.hexdigest()
 
 
-def read_examples(path):
-    examples = []
-    for n, raw in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
-        if not raw.strip():
-            continue
-        d = json.loads(raw)
-        if not isinstance(d.get("prompt"), str) or not isinstance(d.get("completion"), str):
-            raise ValueError(f"{path}:{n}: prompt/completion strings required")
-        if not d["prompt"].strip() or not d["completion"].strip():
-            raise ValueError(f"{path}:{n}: empty example")
-        if len(d["prompt"]) > 18000 or len(d["completion"]) > 2400:
-            raise ValueError(f"{path}:{n}: unusually long example")
-        examples.append({"prompt": d["prompt"], "completion": d["completion"]})
-    if len(examples) < 2:
-        raise ValueError(f"{path}: need >=2 examples")
-    return examples
+def input_files(pattern):
+    paths=sorted(glob.glob(str(pattern)))
+    if not paths and Path(pattern).is_file(): paths=[str(pattern)]
+    if not paths: raise FileNotFoundError("Missing approved dataset: "+str(pattern))
+    return [Path(x) for x in paths]
 
+
+def read_examples(path):
+    examples=[]
+    for file in input_files(path):
+        with file.open(encoding="utf-8") as fp:
+            for n,raw in enumerate(fp,1):
+                if not raw.strip(): continue
+                d=json.loads(raw)
+                if not isinstance(d.get("prompt"),str) or not isinstance(d.get("completion"),str):
+                    raise ValueError(f"{file}:{n}: expected prompt and completion text")
+                if not d["prompt"].strip() or not d["completion"].strip():
+                    raise ValueError(f"{file}:{n}: empty training data")
+                if len(d["prompt"])>18000 or len(d["completion"])>2400:
+                    raise ValueError(f"{file}:{n}: input too long")
+                examples.append({"prompt":d["prompt"],"completion":d["completion"],
+                                 "session":str(d.get("dialogue_id",""))})
+    if len(examples)<2: raise ValueError(f"{path}: at least 2 examples needed")
+    return examples
 
 def parse(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--train", default=str(ROOT / "data" / "approved" / "train.jsonl"))
-    p.add_argument("--val", default=str(ROOT / "data" / "approved" / "val.jsonl"))
+    p.add_argument("--train", default=str(ROOT / "open_data" / "kmi_train_*.jsonl"))
+    p.add_argument("--val", default=str(ROOT / "open_data" / "kmi_val.jsonl"))
     p.add_argument("--model", default=BASE)
     p.add_argument("--output", default=str(ROOT / "outputs" / "maumgyeol-qwen25-cpu-lora"))
     p.add_argument("--max-steps", type=int, default=100)
     p.add_argument("--max-length", type=int, default=256)
     p.add_argument("--learning-rate", type=float, default=1e-4)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--cpu-dtype", choices=["bfloat16","float32"], default="bfloat16")
     p.add_argument("--dry-run", action="store_true", help="Validate dataset without any Torch dependencies")
     return p.parse_args(argv)
 
@@ -84,8 +93,11 @@ def main(argv=None):
     if args.max_steps < 1 or args.max_length < 64:
         raise SystemExit("max-steps >=1 and max-length >=64 required")
     train, val = read_examples(args.train), read_examples(args.val)
-    if Path(args.train).resolve() == Path(args.val).resolve():
+    if {p.resolve() for p in input_files(args.train)} & {p.resolve() for p in input_files(args.val)}:
         raise SystemExit("Training and validation must be separate files")
+    tr_ids={x["session"] for x in train if x.get("session")}
+    vl_ids={x["session"] for x in val if x.get("session")}
+    if tr_ids & vl_ids: raise SystemExit("Leaked conversation IDs across train/validation")
     sample_hashes = {hashlib.sha256((x["prompt"] + x["completion"]).encode()).hexdigest()
                      for x in train}
     if sample_hashes & {hashlib.sha256((x["prompt"] + x["completion"]).encode()).hexdigest()
@@ -109,8 +121,9 @@ def main(argv=None):
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=False)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
+    dtype = torch.bfloat16 if args.cpu_dtype == "bfloat16" else torch.float32
     base_model = AutoModelForCausalLM.from_pretrained(
-        args.model, torch_dtype=torch.float32, low_cpu_mem_usage=True,
+        args.model, torch_dtype=dtype, low_cpu_mem_usage=True,
         trust_remote_code=False)
     base_model.config.use_cache = False
     base_model.gradient_checkpointing_enable()
@@ -161,7 +174,7 @@ def main(argv=None):
         "base_model": args.model, "target_website_base": BASE,
         "base_compatible_with_site": args.model == BASE,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(),
-        "training_device": "cpu", "method": "LoRA FP32",
+        "training_device": "cpu", "method": "LoRA CPU", "base_weight_dtype": args.cpu_dtype,
         "train_examples": len(train), "validation_examples": len(val),
         "train_sha256": sha256(args.train), "val_sha256": sha256(args.val),
         "adapter_sha256": sha256(adapter), "steps": int(result.global_step),
