@@ -1,0 +1,60 @@
+name: Experimental CPU fine-tuning evidence (NOT clinical validation)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/cpu-finetune-smoke.yml
+permissions:
+  contents: read
+jobs:
+  train-cpu-experimental:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU-only training dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install 'transformers>=4.55,<5' 'peft>=0.17,<1' 'accelerate>=1.8,<2' 'safetensors>=0.5,<1'
+      - name: Check KMI train/validation provenance and disjoint conversation IDs
+        run: |
+          python training/train_cpu_lora.py --dry-run
+      - name: Actual experimental LoRA gradient update (base Qwen2.5-1.5B, CPU)
+        run: |
+          python -u training/train_cpu_lora.py \
+            --cpu-dtype bfloat16 \
+            --max-steps 1 \
+            --max-length 96 \
+            --max-training-examples 16 \
+            --max-eval-examples 4
+      - name: Require real trained weight file (NOT proof of clinical quality)
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("training/outputs/maumgyeol-qwen25-cpu-lora")
+          m=json.loads((p/"training_manifest.json").read_text())
+          assert (p/"adapter_model.safetensors").stat().st_size > 1000
+          assert m["steps"] == 1 and m["training_device"] == "cpu"
+          assert m["status"] == "trained_not_safety_validated"
+          assert m["approved_for_release"] is False
+          assert m["experimental_smoke_training"] is True
+          print("CPU optimizer updated weights; test-only LoRA artifact confirmed")
+          print("NOT CLINICALLY VALIDATED OR APPROVED FOR WEBSITE DEPLOYMENT")
+          PY
+      - name: Upload temporary EXPERIMENTAL adapter and factual training manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-unvalidated-cpu-1step-experiment
+          path: training/outputs/maumgyeol-qwen25-cpu-lora/
+          retention-days: 1
+          if-no-files-found: error
