@@ -90,6 +90,21 @@ def demo(message):
         return "관계에서 겪는 어려움은 쉽게 정리되지 않을 수 있어요. 어떤 일이 있었는지 편안하게 들려주실래요?"
     return "아직 AI 모델이 연결되지 않아 안내 체험으로 답변하고 있어요. 이야기를 하나씩 정리해 볼까요? 가장 먼저 떠오르는 일이 무엇인가요?"
 
+def build_chat_payload(messages, stream=False):
+    # Use a compact recent context; less prompt processing and output reduces
+    # latency, but free upstream latency is outside our control.
+    history=[{"role":m["role"],"content":m["content"][-1000:]} for m in messages[-8:]]
+    payload={"model":MODEL_NAME,"messages":[{"role":"system","content":PROMPT}]+history,
+             "stream":stream,"temperature":0.35,"max_tokens":260}
+    if MODEL_PROVIDER=="ollama":
+        payload["options"]={"temperature":0.35}
+        payload.pop("temperature",None)
+        payload.pop("max_tokens",None)
+    elif FREE_EXTERNAL and not KEYLESS_BACKEND:
+        payload["provider"]={"data_collection":"deny"}
+    return payload
+
+
 def answer(messages):
     text=messages[-1]["content"]
     safe=safety_response(text)
@@ -99,28 +114,34 @@ def answer(messages):
         return demo_reply(messages), "guided-demo", "none"
     if KEYLESS_BACKEND and MODEL_PROBE_STATUS!="ok":
         raise RuntimeError("Anonymous free model is not currently available")
-    context=[{"role":m["role"],"content":m["content"][-1200:]} for m in messages[-10:]]
-    payload = {"model":MODEL_NAME,"messages":[{"role":"system","content":PROMPT}]+context,"stream":False}
-    if MODEL_PROVIDER == "ollama":
-        payload["options"]={"temperature":0.65}
-    else:
-        payload["temperature"]=0.4
-        payload["max_tokens"]=420
-        if FREE_EXTERNAL and not KEYLESS_BACKEND:
-            # Never relax the account's original OpenRouter privacy filtering.
-            payload["provider"]={"data_collection":"deny"}
-        if KEYLESS_BACKEND:
-            # External model provider is informed in the UI; data is sent only
-            # after explicit opt-in. No downloads and no user API credentials.
-            payload["max_tokens"]=420
+    payload=build_chat_payload(messages)
     headers={"Content-Type":"application/json"}
     if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
-    req=Request(MODEL_URL, json.dumps(payload, ensure_ascii=False).encode(), headers, method="POST")
-    with urlopen(req, timeout=28) as f: data=json.load(f)
-    s=(data.get("message") or {}).get("content") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")
-    if not isinstance(s,str) or not s.strip():raise ValueError("Empty model response")
-    s=re.sub(r"<think>[\s\S]*?</think>","",s,flags=re.I).strip()
-    return safe_model_output(s[:8000]),"model","none"
+    req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
+    with urlopen(req,timeout=25) as resp:
+        data=json.load(resp)
+    output=(data.get("message") or {}).get("content") if MODEL_PROVIDER=="ollama" else (data.get("choices") or [{}])[0].get("message",{}).get("content")
+    if not isinstance(output,str) or not output.strip():
+        raise ValueError("Empty model response")
+    return safe_model_output(output[:5000]),"model","none"
+
+
+def model_stream_request(messages):
+    payload=build_chat_payload(messages,stream=True)
+    headers={"Content-Type":"application/json","Accept":"text/event-stream"}
+    if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
+    return Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
+
+
+def korean_preview(raw):
+    # Exclude unclosed reasoning blocks, and only render meaningful Korean.
+    raw=re.sub(r"(?is)<think>.*?(?:</think>|$)","",raw)
+    raw=re.sub(r"(?is)<analysis>.*?(?:</analysis>|$)","",raw)
+    clean=safe_model_output(raw[:1200])
+    if clean.startswith("이야기를 충분히 이해하지 못했어요"):
+        return ""
+    return clean[:360]
+
 
 
 # These error messages are deliberately generic: never send API keys, upstream
@@ -279,6 +300,93 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
+    def stream_chat(self,messages):
+        started=time.monotonic()
+        safe=safety_response(messages[-1]["content"])
+        if safe:
+            reply=safe_model_output(safe[0])
+            self.send_response(200)
+            self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control","no-store, no-transform")
+            self.send_header("X-Accel-Buffering","no")
+            self.end_headers()
+            self.emit_stream({"type":"final","reply":reply,"safety":safe[1]})
+            return
+        if not MODEL_URL:
+            reply=demo_reply(messages)
+            self.send_response(200)
+            self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control","no-store, no-transform")
+            self.end_headers()
+            self.emit_stream({"type":"final","reply":reply,"safety":"none"})
+            return
+        if KEYLESS_BACKEND and MODEL_PROBE_STATUS!="ok":
+            return self.send(503,{"error":"무료 상담 대화 서비스의 연결을 확인할 수 없습니다."})
+        try:
+            response=urlopen(model_stream_request(messages),timeout=24)
+        except HTTPError as exc:
+            print("STREAM_UPSTREAM http_"+str(exc.code),flush=True)
+            return self.send(503,{"error":upstream_message(exc.code)})
+        except Exception as exc:
+            print("STREAM_UPSTREAM error_"+type(exc).__name__,flush=True)
+            return self.send(503,{"error":"외부 대화 서비스 연결이 원활하지 않습니다."})
+        self.send_response(200)
+        self.send_header("Content-Type","application/x-ndjson; charset=utf-8")
+        self.send_header("Cache-Control","no-store, no-transform")
+        self.send_header("X-Accel-Buffering","no")
+        self.send_header("X-Content-Type-Options","nosniff")
+        self.end_headers()
+        raw=""
+        previous=""
+        last_emit=time.monotonic()
+        try:
+            with response:
+                content_type=response.headers.get("Content-Type","")
+                if "application/json" in content_type:
+                    data=json.load(response)
+                    raw=(data.get("choices") or [{}])[0].get("message",{}).get("content") or ""
+                else:
+                    for line in response:
+                        if len(raw)>=1800:
+                            break
+                        if not line.startswith(b"data:"):
+                            continue
+                        data=line[5:].strip()
+                        if data==b"[DONE]":
+                            break
+                        try:
+                            chunk=json.loads(data)
+                            delta=(chunk.get("choices") or [{}])[0].get("delta") or {}
+                            part=delta.get("content")
+                            if not isinstance(part,str):
+                                continue
+                        except (ValueError,KeyError,IndexError,AttributeError):
+                            continue
+                        raw+=part
+                        # Render only after enough text. Replace the entire safe
+                        # preview on client to avoid splitting or leaking English.
+                        if len(raw)>=16 and (len(raw)-len(previous)>=20 or time.monotonic()-last_emit>0.45):
+                            visible=korean_preview(raw)
+                            if visible and visible!=previous:
+                                previous=visible
+                                last_emit=time.monotonic()
+                                self.emit_stream({"type":"preview","text":visible})
+            final=korean_preview(raw)
+            if not final:
+                raise ValueError("Empty streaming response")
+            self.emit_stream({"type":"final","reply":final,"safety":"none"})
+            print("MAUMGYEOL_STREAM elapsed_ms="+str(int((time.monotonic()-started)*1000)),flush=True)
+        except (BrokenPipeError,ConnectionResetError):
+            pass
+        except Exception as exc:
+            print("MAUMGYEOL_STREAM error_"+type(exc).__name__,flush=True)
+            try: self.emit_stream({"type":"error","error":"답변을 받지 못했습니다. 다시 말씀해 주세요."})
+            except (BrokenPipeError,ConnectionResetError): pass
+
+    def emit_stream(self,item):
+        self.wfile.write((json.dumps(item,ensure_ascii=False)+"\\n").encode("utf-8"))
+        self.wfile.flush()
+
     def do_POST(self):
         p=urlsplit(self.path).path
         try:
@@ -293,7 +401,7 @@ class Handler(BaseHTTPRequestHandler):
             if not hmac.compare_digest(code,ACCESS_CODE):return self.send(401,LOGIN.replace("초대 코드","코드를 다시 확인해 주세요"),"text/html; charset=utf-8")
             return self.send(303,b"","text/plain",{"Location":"/","Set-Cookie":"mg_session="+token()+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800"})
         if not auth(self.headers.get("Cookie","")):return self.send(401,{"error":"접근 코드 입력 후 이용해 주세요."})
-        if p!="/api/chat":return self.send(404,{"error":"주소를 찾을 수 없습니다."})
+        if p not in ("/api/chat","/api/chat/stream"):return self.send(404,{"error":"주소를 찾을 수 없습니다."})
         if not permitted(ip,"chat",60):return self.send(429,{"error":"요청이 너무 많아요."})
         try:
             body=json.loads(raw)
@@ -305,6 +413,7 @@ class Handler(BaseHTTPRequestHandler):
             if messages[-1]["role"]!="user" or not messages[-1]["content"].strip():raise ValueError()
         except (ValueError,TypeError,AttributeError):
             return self.send(400,{"error":"메시지 형식을 확인해 주세요."})
+        if p=="/api/chat/stream":return self.stream_chat(messages)
         started=time.monotonic()
         try: reply,source,safety=answer(messages)
         except HTTPError as exc:
