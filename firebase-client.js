@@ -27,6 +27,7 @@ async function loadAccount(){
   }
   if(!configResponse.enabled||!configResponse.firebase){
     historyMessage('구글 계정 연결 준비 중입니다. Firebase 프로젝트를 연결하기 전에는 이 화면의 상담 기록이 서버에 저장되지 않습니다.');
+    window.maumgyeolSignature?.setStoredSessions([]);
     profile.textContent='계정 미연결';
     $('historySaving').checked=false;
     $('historySaving').disabled=true;
@@ -58,6 +59,7 @@ async function loadAccount(){
       currentUser=user;uid=user?.uid||null;
       account.ready=!!user;
       if(!user){
+        window.maumgyeolSignature?.setStoredSessions([]);
         gate.hidden=false;historyMessage('로그인한 뒤 대화 내역을 확인할 수 있습니다.');
         profile.textContent='로그인 필요';return;
       }
@@ -159,6 +161,7 @@ async function refreshHistory(){
   ));
   const rows=snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
   showSessions(rows);
+  window.maumgyeolSignature?.setStoredSessions(rows);
 }
 $('historyRefresh')?.addEventListener('click',async()=>{
   try{await refreshHistory();}catch{historyMessage('저장 내역을 읽지 못했습니다. 데이터베이스 설정을 확인해 주세요.');}
