@@ -50,17 +50,53 @@ function addMessage(role,content,{pending=false,safety='none'}={}){
   messageList.append(wrapper);scrollBottom();return {wrapper,bubble};
 }
 function updateIntro(){const has=messages.length>0;intro.hidden=has;suggestions.hidden=has;$('historySummary').textContent=has?'대화를 이어가고 있어요.':'첫 이야기를 기다리고 있어요.';}
-async function sendMessage(content){const text=String(content||'').trim();if(!text||busy)return;
-  if(!$('externalConsentWrap').hidden&&!$('externalConsent').checked){alert('외부 대화 처리 서비스에 전송하는 데 동의한 뒤 이용해 주세요.');return;}
-  busy=true;send.disabled=true;input.value='';input.style.height='auto';$('readyText').textContent='마음결이 이야기를 듣고 있어요';
+async function sendMessage(content){
+  const text=String(content||'').trim();if(!text||busy)return;
+  if(!$('externalConsentWrap').hidden&&!$('externalConsent').checked){
+    alert('외부 대화 처리 서비스에 전송하는 데 동의한 뒤 이용해 주세요.');return;
+  }
+  busy=true;send.disabled=true;input.value='';input.style.height='auto';
+  $('readyText').textContent='말씀을 듣고 있어요';
   messages.push({role:'user',content:text});addMessage('user',text);updateIntro();
-  const pending=addMessage('assistant','마음결이 생각을 정리하고 있어요…',{pending:true});
+  const pending=addMessage('assistant','마음결이 답변을 준비하고 있어요…',{pending:true});
+  let completed=false;
   try{
-    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,external_consent:$('externalConsent').checked})});
-    const data=await res.json();if(!res.ok)throw Error(data.error||'응답을 받지 못했어요.');
-    pending.wrapper.remove();messages.push({role:'assistant',content:data.reply});addMessage('assistant',data.reply,{safety:data.safety});
-  }catch(e){pending.wrapper.remove();addMessage('assistant',e.message+' 서버 설정을 확인한 뒤 다시 시도해 주세요.');}
-  finally{busy=false;send.disabled=false;$('readyText').textContent='당신의 속도로 이야기해요';input.focus();}
+    const req={method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages,external_consent:$('externalConsent').checked})};
+    const res=await fetch('/api/chat/stream',req);
+    if(!res.ok){const err=await res.json().catch(()=>({}));
+      throw Error(err.error||'대화 연결이 원활하지 않습니다.');}
+    if(!res.body)throw Error('이 브라우저에서 실시간 대화를 표시하지 못했습니다.');
+    const reader=res.body.getReader(),decoder=new TextDecoder();
+    let buffer='',answer='',safety='none';
+    while(true){
+      const chunk=await reader.read();
+      buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});
+      const lines=buffer.split('\n');buffer=lines.pop()||'';
+      for(const line of lines){
+        if(!line.trim())continue;
+        let evt;try{evt=JSON.parse(line);}catch{continue;}
+        if(evt.type==='preview'&&typeof evt.text==='string'){
+          pending.bubble.textContent=evt.text;
+          pending.bubble.classList.remove('thinking');
+          scrollBottom();
+        }else if(evt.type==='final'&&typeof evt.reply==='string'){
+          answer=evt.reply;safety=evt.safety||'none';
+        }else if(evt.type==='error')throw Error(evt.error||'대화에 문제가 생겼습니다.');
+      }
+      if(chunk.done)break;
+    }
+    if(!answer)throw Error('응답을 완성하지 못했습니다. 다시 시도해 주세요.');
+    completed=true;
+    pending.wrapper.remove();messages.push({role:'assistant',content:answer});
+    addMessage('assistant',answer,{safety});
+  }catch(e){
+    pending.wrapper.remove();
+    addMessage('assistant',e.message||'대화 연결이 원활하지 않습니다.');
+    if(messages.at(-1)?.role==='user')messages.pop();
+  }finally{
+    busy=false;send.disabled=false;$('readyText').textContent='당신의 속도로 이야기해요';input.focus();
+  }
 }
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();sendMessage(input.value);});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendMessage(input.value);}});
