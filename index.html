@@ -365,6 +365,7 @@ body.focus-mode .rightbar{display:none}body.focus-mode .panes{grid-template-colu
 <section class="note-panel"><div class="quote">“</div>오늘을 잘 보내지 못했어도,<br>당신은 충분히 소중해요.<small>오늘의 작은 문장</small></section><div class="right-footer">한 번에 한 걸음.</div></aside>
 </div>
 </div></div>
+<script src="/chat-guardrails.js"></script>
 <script>'use strict';
 const $=id=>document.getElementById(id);
 window.maumgyeolAccount={required:false,ready:false,getToken:async()=>null,saveMessage:()=>Promise.resolve(),newConversation:()=>{},signOut:()=>{}};
@@ -498,14 +499,17 @@ const localAI=(()=>{
   }
   async function complete(history,onPreview=()=>{},rolePrompt=SYSTEM){
     if(generating)throw Error("다른 대화의 답변을 생성 중입니다. 완료한 뒤 다시 시도해 주세요.");
+    // Handle urgent situations and simple factual clarification even offline.
+    const immediate=rolePrompt===SYSTEM?window.MaumgyeolGuardrails?.preflight(history):null;
+    if(immediate){onPreview(immediate.reply);return immediate.reply;}
     const model=await startModel();
     generating=true;
     try{sessionStorage.setItem(CRASH_MARKER,"1");}catch{}
     try{
       // Avoid oversizing the GPU KV cache and prefill work for a short mobile chat.
-      const compact=history.slice(-5).map(m=>({
+      const compact=history.slice(-7).map(m=>({
         role:m.role==="assistant"?"assistant":"user",
-        content:String(m.content||"").slice(-260)
+        content:String(m.content||"").slice(-190)
       }));
       await referenceReady;
       const example=rolePrompt===SYSTEM?chooseCounselingExample(compact):null;
@@ -514,8 +518,9 @@ const localAI=(()=>{
           +example.q.slice(0,105)+" / 상담자: "+example.a.slice(0,125)
           +"\n반드시 참고 사례를 복사하지 말고 현재 사용자의 사연과 질문에 맞춰 새 답변을 생성하라."
         : "";
+      const contextInstruction=rolePrompt===SYSTEM?window.MaumgyeolGuardrails?.contextNote(compact)||"":"";
       const stream=await model.chat.completions.create({
-        messages:[{role:"system",content:rolePrompt+guidance},...compact],
+        messages:[{role:"system",content:rolePrompt+guidance+contextInstruction},...compact],
         temperature:0.5,top_p:0.85,repetition_penalty:1.08,max_tokens:176,stream:true
       });
       let raw="",lastPreviewAt=0;
@@ -530,7 +535,9 @@ const localAI=(()=>{
           lastPreviewAt=now;
         }
       }
-      const answer=clean(raw);
+      const answer=rolePrompt===SYSTEM
+        ? (window.MaumgyeolGuardrails?.polish(clean(raw),history)||clean(raw))
+        : clean(raw);
       if(answer)onPreview(answer);
       if(!answer)throw Error("기기 모델이 빈 응답을 생성했습니다. 다시 시도해 주세요.");
       return answer;
@@ -1227,7 +1234,7 @@ const callInterface=(()=>{
 
 function addMessage(role,content,{pending=false,safety='none'}={}){
   const wrapper=element('article','msg '+role);
-  wrapper.append(element('div','who',role==='user'?'나':'마음결 · 심리상담 대화'));
+  wrapper.append(element('div','who',role==='user'?'나':'마음결 · AI 정서지원 대화'));
   const bubble=element('div','bubble'+(pending?' thinking':''),content);
   wrapper.append(bubble);
   if(role==='assistant'&&!pending){
@@ -1250,6 +1257,7 @@ async function sendMessage(content){
     if(!token){$("accountGate").hidden=false;return;}
   }
   const fromCall=callInterface.isActive();
+  const safety=window.MaumgyeolGuardrails?.assess(text)?.safety||"none";
   voicePlayer.startReply();
   busy=true;send.disabled=true;speechInput.update();input.value="";input.style.height="auto";
   $("readyText").textContent="기기에서 답변 생성 중";
@@ -1262,11 +1270,11 @@ async function sendMessage(content){
       if(!pending.wrapper.dataset.scrolled){pending.wrapper.dataset.scrolled="1";scrollBottom();}
       voicePlayer.onPreview(preview);
     });
-    if(fromCall){if(callInterface.isActive())callInterface.answer(answer,"none","local-model");}
+    if(fromCall){if(callInterface.isActive())callInterface.answer(answer,safety,"local-model");}
     else voicePlayer.onFinal(answer);
     pending.wrapper.remove();messages.push({role:"assistant",content:answer,at:Date.now()});
     if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
-    addMessage("assistant",answer,{safety:"none"});
+    addMessage("assistant",answer,{safety});
   }catch(error){
     voicePlayer.stop();
     if(fromCall)callInterface.fail(error.message||"기기 AI 실행 오류");
