@@ -203,7 +203,30 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .more-menu-content button{width:100%;padding:11px;border:none;border-radius:9px;background:transparent;display:flex;align-items:center;gap:11px;text-align:left;cursor:pointer;color:#617f5e}
 .more-menu-content button:hover,.more-menu-content button:focus-visible{background:#eef5eb;outline:none}
 .more-menu-content button>span:first-child{font-size:22px;min-width:28px}.more-menu-content strong{font-size:12px;display:block;font-weight:650}.more-menu-content small{font-size:10px;display:block;color:#9aab94;margin-top:4px}
-@media(max-width:650px){.more-menu{margin-left:auto;margin-right:4px}.more-menu summary{font-size:10px;padding:7px 9px}.more-menu-content{right:-43px;max-width:87vw}}
+/* Prevent small-screen menus from overflowing the iPhone viewport. */
+@media(max-width:620px){
+  .topbar{width:100%;min-width:0;gap:7px;padding:0 12px;justify-content:flex-start;position:relative;z-index:300;isolation:isolate}
+  .topbar>div:first-child{display:none}
+  .topbar .topbar-emotion{display:none}
+  .topbar .more-menu{position:static;margin:0;margin-right:auto;flex:0 0 auto}
+  .topbar .more-menu summary{font-size:11px;padding:9px 12px}
+  .topbar .topbar-care{flex:0 0 auto;margin:0;padding:8px 10px;font-size:10px}
+  .topbar .privacy{font-size:0;min-width:0;margin-left:0;flex:0 1 auto;white-space:nowrap;gap:0}
+  .topbar .privacy .status{font-size:9px;border-left:0;margin-left:0;padding-left:0}
+  .topbar .more-menu-content{
+    position:fixed;top:var(--more-menu-top,130px);left:12px;right:12px;
+    width:auto;max-width:none;max-height:calc(100dvh - var(--more-menu-top,130px) - 15px);
+    overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;
+    z-index:9999;box-shadow:0 18px 45px rgba(30,49,30,.22)
+  }
+  .topbar .more-menu-content button{min-height:62px;padding:12px 13px}
+}
+@media(max-width:375px){
+  .topbar .topbar-care{padding:7px 8px}
+  .topbar .more-menu summary{padding:8px 9px}
+  .topbar .privacy .status{font-size:8px}
+}
+
 
 </style></head>
 <body><div id="callOverlay" class="call-overlay" hidden role="dialog" aria-modal="true" aria-label="마음결 음성 대화">
@@ -1132,6 +1155,19 @@ function selectView(view){
 }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
 $('topbarCare').addEventListener('click',()=>selectView($('carePanel').hidden?'care':'talk'));
+// Keep the popover inside the visible viewport even if Safari uses a narrow layout.
+const morePopup=$('moreMenu');
+function positionMorePopup(){
+  if(!morePopup.open)return;
+  const summary=morePopup.querySelector('summary');
+  const rect=summary.getBoundingClientRect();
+  const top=Math.max(8,Math.min(window.innerHeight-150,rect.bottom+8));
+  morePopup.style.setProperty('--more-menu-top',top+'px');
+}
+morePopup.addEventListener('toggle',positionMorePopup);
+window.addEventListener('resize',positionMorePopup,{passive:true});
+window.addEventListener('orientationchange',positionMorePopup,{passive:true});
+window.addEventListener('scroll',()=>{if(morePopup.open)morePopup.open=false;},{passive:true});
 document.querySelectorAll('[data-more-feature]').forEach(btn=>btn.addEventListener('click',()=>{
   $('moreMenu').open=false;
   selectView('signature');
