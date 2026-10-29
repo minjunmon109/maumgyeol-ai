@@ -530,8 +530,11 @@ const localAI=(()=>{
         // Updating the full chat DOM for every generated token overworks iOS Safari.
         const now=performance.now();
         if(now-lastPreviewAt>180){
-          const visible=clean(raw);
-          if(visible)onPreview(visible);
+          // Unreviewed partial counseling tokens must not be shown or spoken.
+          if(rolePrompt!==SYSTEM){
+            const visible=clean(raw);
+            if(visible)onPreview(visible);
+          }
           lastPreviewAt=now;
         }
       }
@@ -1268,7 +1271,7 @@ async function sendMessage(content){
     const answer=await localAI.complete(messages,(preview)=>{
       pending.bubble.textContent=preview;pending.bubble.classList.remove("thinking");
       if(!pending.wrapper.dataset.scrolled){pending.wrapper.dataset.scrolled="1";scrollBottom();}
-      voicePlayer.onPreview(preview);
+      // Speak only the finalized reply; interim tokens may be unsafe.
     });
     if(fromCall){if(callInterface.isActive())callInterface.answer(answer,safety,"local-model");}
     else voicePlayer.onFinal(answer);
