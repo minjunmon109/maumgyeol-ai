@@ -95,7 +95,7 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .care-support span{display:block;font-weight:600;font-size:12px}
 .care-support p{font-size:11px;line-height:1.8;margin:7px 0 0}
 @media(max-width:700px){.care-panel{margin:15px auto 24px}.care-grid{grid-template-columns:1fr;gap:10px}.care-card{min-height:0;padding:17px}.thought-workspace{padding:18px}.thought-heading{display:block}.thought-heading h3{font-size:21px;margin-bottom:5px}.thought-privacy{display:block;margin:0 0 14px}.thought-fields{grid-template-columns:1fr}.thought-fields textarea{min-height:80px}.care-header{padding:22px 17px}}
-</style></head>
+.topbar-care{margin-left:auto;margin-right:15px;background:#e9f0e5;border:1px solid #d4e3d1;border-radius:20px;padding:8px 13px;font-size:11px;color:#5a7a58;white-space:nowrap;cursor:pointer;font-weight:600}.topbar-care:hover{background:#dfeade}.topbar-care:focus-visible{outline:2px solid #5c815a;outline-offset:2px}@media(max-width:620px){.topbar-care{margin-left:auto;margin-right:8px;padding:7px 9px;font-size:10px}.topbar .privacy{min-width:0}.topbar .privacy>span:not(.status){display:none}.topbar .status{border-left:0;margin-left:0;padding-left:0}}</style></head>
 <body>
 <div class="shell">
 <aside class="sidebar" aria-label="주 메뉴">
@@ -106,7 +106,7 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
   <div class="sidebar-bottom"><div class="twig">♧</div><p>말하지 못했던 고민도<br>천천히 이야기해요.</p><button id="clearChat" class="text-button">대화 초기화 ↗</button><span>마음결 · 심리상담 대화</span></div>
 </aside>
 <div class="workspace">
-<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
+<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
 <div class="panes">
 <main class="main" id="mainContent">
 <section id="intro" class="intro"><div class="botanical" aria-hidden="true"><svg viewBox="0 0 180 160"><circle cx="86" cy="75" r="62" fill="#eeefe2"/><circle cx="127" cy="30" r="22" fill="#f0cbaa"/><path d="M83 132v-81" stroke="#667f61" stroke-width="2.2"/><path d="M83 94C53 91 46 72 49 59c29 0 37 19 34 35M83 99c30-10 34-31 31-42C90 62 79 81 83 99" fill="#799471"/><path d="M83 70c-24-7-29-28-22-38 18 5 25 20 22 38" fill="#b1c1a2"/><path d="M60 133h50" stroke="#647b5d"/><path d="M20 126c43 20 96 20 142-2" stroke="#d5dac9" fill="none"/></svg></div><div class="eyebrow">마음이 쉬어 가는 대화</div><h1>혼자 안고 있던 마음,<br><span class="hero-accent">여기서 천천히 이야기해요.</span></h1><p>고민을 잘 설명하지 않아도 괜찮아요.<br>지금 어떤 일이 마음에 남아 있는지부터 나눠 주세요.</p><div class="intro-caption"><span>✦</span> 서두르지 않는 경청 · 감정과 생각 정리 · 나에게 맞는 작은 선택</div></section>
@@ -458,9 +458,12 @@ function selectView(view){
     $('messages').hidden=false;updateIntro();
     if(view==='mood')document.querySelector('.rightbar').scrollIntoView({behavior:'smooth',block:'nearest'});
   }
+  $('topbarCare').textContent=view==='care'?'← 대화하기':'✦ 마음 관리';
+  $('topbarCare').setAttribute('aria-label',view==='care'?'대화 화면 열기':'통합 마음 관리 화면 열기');
   if(view==='care')$('carePanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
+$('topbarCare').addEventListener('click',()=>selectView($('carePanel').hidden?'care':'talk'));
 document.querySelectorAll('[data-mood]').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('[data-mood]').forEach(x=>x.classList.remove('selected'));
  b.classList.add('selected');
