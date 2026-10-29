@@ -15,6 +15,18 @@ MODEL_URL = os.getenv("MODEL_URL", "").strip()
 MODEL_API_KEY = os.getenv("MODEL_API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "maumgyeol-qwen3-4b")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai")
+# Optional free hosted inference. Key is configured privately in Render, never in GitHub.
+# Free variants only: never fall back to billable models.
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen3.8-27b:free").strip()
+if OPENROUTER_API_KEY and not MODEL_URL:
+    if not (OPENROUTER_MODEL.endswith(":free") or OPENROUTER_MODEL == "openrouter/free"):
+        raise RuntimeError("Only free OpenRouter models are allowed")
+    MODEL_URL = "https://openrouter.ai/api/v1/chat/completions"
+    MODEL_API_KEY = OPENROUTER_API_KEY
+    MODEL_NAME = OPENROUTER_MODEL
+    MODEL_PROVIDER = "openai"
+FREE_EXTERNAL = bool(OPENROUTER_API_KEY and MODEL_URL == "https://openrouter.ai/api/v1/chat/completions")
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
@@ -77,6 +89,9 @@ def answer(messages):
     else:
         payload["temperature"]=0.65
         payload["max_tokens"]=640
+        if FREE_EXTERNAL:
+            # No model-training data collection by provider. Fail rather than bypass this privacy filter.
+            payload["provider"]={"data_collection":"deny"}
     headers={"Content-Type":"application/json"}
     if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
     req=Request(MODEL_URL, json.dumps(payload, ensure_ascii=False).encode(), headers, method="POST")
@@ -105,7 +120,7 @@ class Handler(BaseHTTPRequestHandler):
         if p in ("/","/index.html"):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
         if p=="/api/status":
-            return self.send(200,{"ready":False,"configured":bool(MODEL_URL),"mode":"model-configured" if MODEL_URL else "guided-demo","model":MODEL_NAME if MODEL_URL else None})
+            return self.send(200,{"ready":False,"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"mode":"model-configured" if MODEL_URL else "guided-demo","model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
     def do_POST(self):
@@ -125,7 +140,10 @@ class Handler(BaseHTTPRequestHandler):
         if p!="/api/chat":return self.send(404,{"error":"주소를 찾을 수 없습니다."})
         if not permitted(ip,"chat",60):return self.send(429,{"error":"요청이 너무 많아요."})
         try:
-            messages=json.loads(raw).get("messages")
+            body=json.loads(raw)
+            messages=body.get("messages")
+            if FREE_EXTERNAL and body.get("external_consent") is not True:
+                return self.send(403,{"error":"외부 AI 전송 동의가 필요합니다. 동의란을 확인해 주세요."})
             if not isinstance(messages,list) or not 1<=len(messages)<=32:raise ValueError()
             if any(not isinstance(m,dict) or m.get("role") not in ("user","assistant") or not isinstance(m.get("content"),str) or len(m["content"])>2400 for m in messages):raise ValueError()
             if messages[-1]["role"]!="user" or not messages[-1]["content"].strip():raise ValueError()
