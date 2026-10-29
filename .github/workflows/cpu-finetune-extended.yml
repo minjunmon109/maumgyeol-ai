@@ -1,0 +1,53 @@
+name: Qwen2.5 1.5B KMI extended CPU fine-tuning - no clinical claims
+on:
+  push:
+    paths:
+      - '.github/workflows/cpu-finetune-extended.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  train-counselor-cpu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      TOKENIZERS_PARALLELISM: 'false'
+      HF_HOME: /tmp/maumgyeol-hf
+      OMP_NUM_THREADS: '4'
+      MKL_NUM_THREADS: '4'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Inspect CPU and memory
+        run: free -h
+      - name: Install CPU training dependencies
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r training/requirements-cpu.txt
+      - name: Validate full licensed Korean KMI data
+        run: |
+          python training/train_cpu_lora.py --dry-run
+          python -m unittest discover -s tests -p 'test_*.py'
+      - name: Train actual Qwen2.5-1.5B weights with CPU LoRA and evaluate holdout
+        run: |
+          python -u training/train_cpu_lora.py \
+            --train 'training/open_data/kmi_train_*.jsonl' \
+            --val training/open_data/kmi_val.jsonl \
+            --output training/outputs/kmi-qwen25-cpu-extended \
+            --max-steps 100 \
+            --max-length 128 \
+            --max-eval-examples 64 \
+            --cpu-dtype bfloat16
+      - name: Verify actual adapter and finite training and validation losses
+        run: |
+          python training/verify_cpu_training.py \
+            --output training/outputs/kmi-qwen25-cpu-extended --expected-steps 100
+      - name: Preserve training evidence - UNVALIDATED never deploy automatically
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-qwen25-1p5b-kmi-100steps-unvalidated
+          path: training/outputs/kmi-qwen25-cpu-extended/
+          retention-days: 14
+          if-no-files-found: error
