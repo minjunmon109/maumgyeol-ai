@@ -28,6 +28,18 @@ if OPENROUTER_API_KEY and not MODEL_URL:
     MODEL_NAME = OPENROUTER_MODEL
     MODEL_PROVIDER = "openai"
 FREE_EXTERNAL = bool(OPENROUTER_API_KEY and MODEL_URL == "https://openrouter.ai/api/v1/chat/completions")
+# Zero-download, anonymous, no-API-key large-model trial.
+# Authorized by the official Kilo gateway's anonymous :free access policy.
+# Never use paid model IDs, and never send a secret token to this provider.
+KEYLESS_BACKEND = os.getenv("KEYLESS_BACKEND", "kilo").strip().lower() == "kilo" and not os.getenv("MODEL_URL","").strip()
+if KEYLESS_BACKEND:
+    MODEL_URL = "https://api.kilo.ai/api/gateway/chat/completions"
+    MODEL_API_KEY = ""
+    MODEL_NAME = "z-ai/glm-5:free"
+    MODEL_PROVIDER = "openai"
+    FREE_EXTERNAL = True
+MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("openrouter" if FREE_EXTERNAL else "custom")
+
 MODEL_PROBE_STATUS = "checking" if FREE_EXTERNAL else "not_configured"
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
@@ -85,15 +97,21 @@ def answer(messages):
         return safe[0], "safety-guidance", safe[1]
     if not MODEL_URL:
         return demo_reply(messages), "guided-demo", "none"
+    if KEYLESS_BACKEND and MODEL_PROBE_STATUS!="ok":
+        raise RuntimeError("Anonymous free model is not currently available")
     payload = {"model":MODEL_NAME,"messages":[{"role":"system","content":PROMPT}]+messages[-16:],"stream":False}
     if MODEL_PROVIDER == "ollama":
         payload["options"]={"temperature":0.65}
     else:
         payload["temperature"]=0.65
         payload["max_tokens"]=640
-        if FREE_EXTERNAL:
-            # No model-training data collection by provider. Fail rather than bypass this privacy filter.
+        if FREE_EXTERNAL and not KEYLESS_BACKEND:
+            # Never relax the account's original OpenRouter privacy filtering.
             payload["provider"]={"data_collection":"deny"}
+        if KEYLESS_BACKEND:
+            # External model provider is informed in the UI; data is sent only
+            # after explicit opt-in. No downloads and no user API credentials.
+            payload["max_tokens"]=900
     headers={"Content-Type":"application/json"}
     if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
     req=Request(MODEL_URL, json.dumps(payload, ensure_ascii=False).encode(), headers, method="POST")
@@ -108,12 +126,12 @@ def answer(messages):
 # request bodies, URLs with credentials, or sensitive chat text to the browser.
 UPSTREAM_ERRORS = {
     400: "외부 AI 요청 형식이 맞지 않습니다. 관리자에게 알려 주세요.",
-    401: "OpenRouter API 키가 올바르지 않거나 폐기됐습니다. Render의 OPENROUTER_API_KEY를 새 키로 교체해 주세요.",
-    402: "OpenRouter 계정에 현재 모델을 이용할 수 있는 무료 할당량이 없습니다. 무료 이용 조건을 확인해 주세요.",
-    403: "OpenRouter가 요청을 거부했습니다. API 키 권한과 계정의 개인정보 보호 설정을 확인해 주세요.",
-    404: "현재 개인정보 보호 조건을 만족하는 무료 Qwen 모델 제공업체를 찾지 못했습니다. 무료 모델 제공 상황을 확인해 주세요.",
+    401: "무료 AI 제공업체가 인증 요청을 거부했습니다. 관리자에게 알려 주세요.",
+    402: "무료 AI 사용량이 부족하거나 제공업체의 무료 조건이 변경됐습니다.",
+    403: "외부 AI 제공업체에서 이 요청을 거부했습니다.",
+    404: "무료 대형 AI 모델을 찾지 못했습니다. 제공업체의 모델 상태를 확인해 주세요.",
     408: "무료 모델 응답 시간이 초과됐습니다. 잠시 후 다시 시도해 주세요.",
-    429: "OpenRouter 무료 요청 횟수 제한에 걸렸습니다. 이용 가능 횟수가 회복된 후 다시 시도해 주세요.",
+    429: "무료 AI 요청 횟수 제한에 걸렸습니다. 나중에 다시 시도해 주세요.",
     500: "OpenRouter 또는 모델 제공업체에서 일시적인 오류가 발생했습니다.",
     502: "무료 모델 제공업체가 정상 응답하지 않았습니다. 잠시 후 다시 시도해 주세요.",
     503: "무료 모델 제공업체가 현재 사용 불가 상태입니다. 잠시 후 다시 시도해 주세요.",
@@ -123,7 +141,43 @@ UPSTREAM_ERRORS = {
 def upstream_message(status):
     return UPSTREAM_ERRORS.get(status,"외부 AI 제공업체에 요청하지 못했습니다. 관리자에게 문의해 주세요.")
 
+def check_anonymous_large_model():
+    # Probe using synthetic non-sensitive text. Keyless provider is separate
+    # from the user's OpenRouter API key and never receives that key.
+    global MODEL_PROBE_STATUS, MODEL_NAME
+    candidates=("z-ai/glm-5:free","minimax/minimax-m2.1:free","dots-studio/dots-3-note-preview:free")
+    for candidate in candidates:
+        payload={"model":candidate,
+                 "messages":[{"role":"user","content":"한국어로 짧게 '안녕하세요'라고 인사해 주세요."}],
+                 "max_tokens":350,"stream":False}
+        try:
+            req=Request(MODEL_URL,
+                        json.dumps(payload,ensure_ascii=False).encode("utf-8"),
+                        {"Content-Type":"application/json","User-Agent":"Maumgyeol-Demo/1.0"},
+                        method="POST")
+            with urlopen(req,timeout=40) as response:
+                result=json.load(response)
+            choice=(result.get("choices") or [{}])[0]
+            msg=choice.get("message") or {}
+            output=msg.get("content")
+            if isinstance(output,str) and output.strip():
+                MODEL_NAME=candidate
+                MODEL_PROBE_STATUS="ok"
+                print("KEYLESS_LLM_PROBE ok "+candidate,flush=True)
+                return
+            print("KEYLESS_LLM_PROBE empty_response "+candidate,flush=True)
+        except HTTPError as error:
+            print("KEYLESS_LLM_PROBE http_"+str(error.code)+" "+candidate,flush=True)
+        except Exception as error:
+            print("KEYLESS_LLM_PROBE "+type(error).__name__+" "+candidate,flush=True)
+    MODEL_PROBE_STATUS="unavailable"
+    print("KEYLESS_LLM_PROBE all_unavailable",flush=True)
+
+
 def check_free_model_startup():
+    if KEYLESS_BACKEND:
+        check_anonymous_large_model()
+        return
     # Only non-sensitive synthetic greetings are sent. Probe at most two free
     # Qwen-family models with identical privacy filtering.
     global MODEL_NAME, MODEL_PROBE_STATUS
@@ -221,7 +275,7 @@ class Handler(BaseHTTPRequestHandler):
         if p in ("/","/index.html"):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
         if p=="/api/status":
-            return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"mode":"model-configured" if MODEL_URL else "guided-demo","model":MODEL_NAME if MODEL_URL else None})
+            return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
         return self.send(404,{"error":"주소를 찾을 수 없습니다."})
     def do_HEAD(self): return self.do_GET()
     def do_POST(self):
