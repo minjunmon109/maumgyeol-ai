@@ -1,0 +1,73 @@
+name: Actual CPU fine-tuning of KMI counseling dialogue (research only)
+on:
+  push:
+    paths:
+      - .github/workflows/cpu-finetune.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-cpu-lora:
+    name: Qwen2.5 1.5B training proof (no GPU)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      HF_HOME: ${{ runner.temp }}/hf-cpu
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      MALLOC_ARENA_MAX: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Inspect compute resources
+        run: |
+          free -h
+          df -h .
+          python -c 'import os; print("CPU count:",os.cpu_count())'
+      - name: Install real CPU Torch, PEFT and Transformers
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r training/requirements-cpu.txt
+      - name: Prepare licensed KMI dialogue subsets (no private transcripts)
+        run: |
+          python training/cpu_subset.py --train-count 32 --val-count 8
+          python training/train_cpu_lora.py --train training/data/cpu-trial/train.jsonl --val training/data/cpu-trial/val.jsonl --dry-run
+      - name: Run actual base-model CPU LoRA parameter updates
+        run: |
+          python -u training/train_cpu_lora.py \
+            --train training/data/cpu-trial/train.jsonl \
+            --val training/data/cpu-trial/val.jsonl \
+            --output training/outputs/qwen25-1.5b-cpu-trial \
+            --max-steps 6 --max-length 112
+      - name: Verify real trained weights, loss, steps, checksums
+        run: |
+          python - <<'PY'
+          import hashlib,json,math,pathlib
+          out=pathlib.Path('training/outputs/qwen25-1.5b-cpu-trial')
+          d=json.loads((out/'training_manifest.json').read_text())
+          p=out/'adapter_model.safetensors'
+          assert p.is_file() and p.stat().st_size>1024
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==d['adapter_sha256']
+          assert d['base_model']=='Qwen/Qwen2.5-1.5B-Instruct'
+          assert d['steps']==6 and math.isfinite(d['train_loss'])
+          assert math.isfinite(d['val_loss'])
+          assert d['smoke_test_only'] is True
+          assert d['approved_for_release'] is False and d['clinician_reviewed'] is False
+          print('VERIFIED ACTUAL TRAINING: model weights, manifest, train/eval loss, SHA256')
+          print(json.dumps({k:d[k] for k in ('base_model','steps','train_loss','val_loss','adapter_sha256','smoke_test_only')},indent=2))
+          PY
+      - name: Store trained research adapter as downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-qwen25-1p5b-cpu-trained-pilot
+          path: |
+            training/outputs/qwen25-1.5b-cpu-trial/adapter_model.safetensors
+            training/outputs/qwen25-1.5b-cpu-trial/adapter_config.json
+            training/outputs/qwen25-1.5b-cpu-trial/training_manifest.json
+            training/outputs/qwen25-1.5b-cpu-trial/tokenizer_config.json
+          retention-days: 14
+          if-no-files-found: error
