@@ -374,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,LOGIN,"text/html; charset=utf-8") if p=="/" else self.send(401,{"error":"초대 코드가 필요합니다."})
         if p in ("/","/index.html"):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
-        if p=="/firebase-client.js" and FIREBASE_ENABLED:
+        if p=="/firebase-client.js":
             return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/api/status":
             return self.send(200,{"ready":(MODEL_PROBE_STATUS=="ok") if FREE_EXTERNAL else bool(MODEL_URL),"configured":bool(MODEL_URL),"external":FREE_EXTERNAL,"model_status":MODEL_PROBE_STATUS,"provider":MODEL_SOURCE,"mode":"keyless-large-ai" if KEYLESS_BACKEND else ("model-configured" if MODEL_URL else "guided-demo"),"model":MODEL_NAME if MODEL_URL else None})
