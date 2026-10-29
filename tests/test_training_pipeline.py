@@ -58,7 +58,9 @@ class PipelineTests(unittest.TestCase):
                                  "completion":"응답"},MinimalTokenizer(),64)
         self.assertEqual(len(features["labels"]),len(features["input_ids"]))
         self.assertIn(-100,features["labels"])
-        self.assertTrue(all(label==-100 for label in features["labels"][:-8]))
+        first_target=next(i for i,x in enumerate(features["labels"]) if x!=-100)
+        self.assertTrue(all(label==-100 for label in features["labels"][:first_target]))
+        self.assertTrue(all(label!=-100 for label in features["labels"][first_target:]))
 
     def test_auto_audit_rejects_missing_and_unsafe_responses(self):
         r=evaluate([])
