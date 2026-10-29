@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - .github/workflows/cpu-finetune-smoke.yml
+      - training/train_cpu_lora.py
 permissions:
   contents: read
 jobs:
