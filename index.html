@@ -151,6 +151,51 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 .call-actions{display:flex;gap:10px;margin:18px 0 10px}.call-actions button{flex:1;border:none;border-radius:12px;padding:14px 9px;cursor:pointer;font-weight:700;font-size:13px}
 .call-mic{background:#6c906a;color:#fff}.call-mic.listening{background:#b36d61}.call-mic:disabled{opacity:.5;cursor:wait}.call-hangup{background:#f5e6e1;color:#a46459}
 @media(max-width:620px){.composer-footer .call-button{padding:7px 8px}.voice-options{grid-template-columns:1fr}.call-dialog{padding:23px 19px}.call-avatar{margin:35px auto 24px}.call-dialog h2{font-size:24px}}
+
+/* Maumgyeol three signature tools */
+.signature-panel{width:min(100%,850px);margin:28px auto 45px}
+.signature-panel[hidden],.signature-body[hidden]{display:none}
+.signature-hero{background:linear-gradient(120deg,#ecf4e7,#fffdf7 75%);border:1px solid #dce7d8;border-radius:19px;padding:27px 28px}
+.signature-kicker,.signature-heading>span{font-size:10px;letter-spacing:1.2px;color:#829875;font-weight:700}
+.signature-hero h2{font:400 clamp(25px,3.3vw,37px)/1.55 Georgia,'Nanum Myeongjo',serif;color:#557252;margin:13px 0}
+.signature-hero h2 span{color:#769371}.signature-hero p{max-width:660px;color:#829681;font-size:12px;line-height:1.95}
+.signature-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0}
+.signature-tab{background:#fafcf8;border:1px solid #dae5d8;border-radius:12px;padding:14px 8px;color:#728a6d;font-size:12px;font-weight:600;cursor:pointer}
+.signature-tab.active{background:#688765;color:white;border-color:#688765;box-shadow:0 8px 18px rgba(71,102,70,.14)}
+.signature-body{border:1px solid #e2e9dc;border-radius:17px;background:#fffefa;padding:25px}
+.signature-heading h3{font:400 23px/1.6 Georgia,'Nanum Myeongjo',serif;color:#4c6c50;margin:10px 0}
+.signature-heading p{font-size:12px;color:#8b9c85;line-height:1.9;margin:0 0 16px}
+.signature-primary,.signature-secondary{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:10px;padding:12px 16px;font-size:12px;cursor:pointer;font-weight:600}
+.signature-primary{background:#678966;border:1px solid #678966;color:#fff}
+.signature-secondary{background:#f3f7ef;border:1px solid #d8e5d2;color:#5d7a58}
+.signature-primary:disabled,.signature-secondary:disabled{opacity:.5;cursor:not-allowed}
+.signature-disclosure{font-size:10px;color:#93a18f;line-height:1.85;margin:13px 0 4px}
+.direction-layout{margin:21px 0;display:grid;grid-template-columns:185px 1fr;align-items:center;gap:18px;border:1px solid #e1eadd;background:radial-gradient(circle at 18%,#e9f1e5,#f9fbf6 58%,#fffdfa);padding:20px;border-radius:15px}
+.direction-center{display:grid;place-items:center}.direction-circle{height:160px;width:160px;border-radius:50%;background:#e5efe1;border:1px solid #cde0c9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#577a56;box-shadow:0 0 0 9px #edf4e9}
+.direction-circle span{font-size:35px}.direction-circle b{font-size:12px}.direction-circle small{font-size:10px;color:#91a58d}
+.direction-signals{color:#7d9279;font-size:12px;line-height:1.9}
+.direction-signal{border:1px solid #e2e9dc;background:#fffefa;border-radius:9px;padding:8px 11px;margin:6px 0;display:flex;justify-content:space-between;gap:8px}
+.direction-signal strong{font-size:12px;color:#527353}.direction-signal small{font-size:10px;color:#a0ad9a}
+.direction-insight{padding:4px 1px 19px}.direction-insight h4{font-size:12px;color:#5c7c59;margin:17px 0 7px}.direction-insight p{font-size:12px;line-height:1.9;color:#7e937c;margin:0}
+.practice-setup{display:grid;gap:10px;background:#f7faf4;border:1px solid #e2eadd;border-radius:12px;padding:16px;margin:20px 0}
+.practice-setup label{display:grid;gap:8px;color:#587857;font-size:12px;font-weight:600}
+.practice-setup textarea,.practice-setup select,.practice-form textarea{width:100%;background:white;color:#526b50;border:1px solid #dce7d8;border-radius:9px;padding:11px;font:inherit;font-size:13px;line-height:1.8;resize:vertical;outline-color:#7fa27a}
+.practice-actions{display:flex;flex-wrap:wrap;gap:9px}
+.practice-transcript{min-height:110px;max-height:340px;overflow:auto;background:#fafbf8;border:1px solid #e1e9dc;border-radius:12px;padding:13px;margin:14px 0}
+.practice-empty,.timeline-empty{color:#9aa996;font-size:12px;line-height:1.8}
+.practice-line{margin:9px 0;padding:11px 13px;border-radius:12px;max-width:93%;font-size:12px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere}
+.practice-line.mine{margin-left:auto;background:#e8f0e4;color:#53764e}
+.practice-line.theirs{background:white;border:1px solid #e3eadf;color:#657f61}
+.practice-line small{display:block;font-size:10px;opacity:.7;margin-bottom:3px}
+.practice-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:center}
+.practice-form button{align-self:stretch;background:#6a8c69;border:0;color:white;padding:12px;border-radius:9px;font-size:12px;cursor:pointer}
+.practice-form button:disabled{opacity:.5}
+.timeline-overview{border:1px solid #dce7d8;background:#f1f7ed;border-radius:11px;padding:14px;font-size:12px;line-height:1.8;color:#648160;margin:19px 0}
+.timeline-items{display:grid;gap:12px;margin:14px 0 18px}.timeline-day{border-left:3px solid #9eb89b;background:#fafbf8;border-radius:0 10px 10px 0;padding:12px 15px}
+.timeline-day h4{font-size:12px;color:#5e8058;margin:0 0 8px}.timeline-day p{font-size:11px;color:#859a80;line-height:1.8;margin:5px 0}
+.timeline-tags{display:flex;gap:6px;flex-wrap:wrap}.timeline-tag{background:#e9f0e5;color:#62855f;border-radius:15px;padding:5px 9px;font-size:10px}
+.topbar-signature{margin-left:8px;background:#f4f0e6;border:1px solid #e2dfd2;border-radius:20px;padding:8px 12px;font-size:11px;font-weight:600;color:#8a7960;cursor:pointer;white-space:nowrap}
+@media(max-width:690px){.signature-panel{margin:15px auto 28px}.signature-body,.signature-hero{padding:18px}.signature-tabs{gap:5px}.signature-tab{font-size:10px;padding:11px 3px}.signature-heading h3{font-size:20px}.direction-layout{grid-template-columns:1fr;gap:14px}.direction-circle{height:138px;width:138px}.practice-form{grid-template-columns:1fr}.topbar-signature{margin-left:auto;margin-right:4px;padding:7px 8px;font-size:10px}.topbar-signature+.topbar-care{margin-left:0}}
 </style></head>
 <body><div id="callOverlay" class="call-overlay" hidden role="dialog" aria-modal="true" aria-label="마음결 음성 대화">
 <div class="call-dialog">
@@ -174,17 +219,52 @@ body{background:radial-gradient(circle at 72% -14%,#ebeee4 0,transparent 32%),#f
 <aside class="sidebar" aria-label="주 메뉴">
   <div class="brand"><svg viewBox="0 0 50 50" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M25 42V17M25 29C12 28 9 20 11 9c12 0 17 7 14 20Zm0-4C39 23 43 16 41 7 29 7 23 15 25 25Z"/><path d="M15 44h22"/></svg><div><strong>마음결</strong><small>MAEUMGYEOL</small></div></div>
   <button class="new-chat" id="newChat"><span>＋</span> 새로운 대화</button>
-  <nav class="nav" aria-label="페이지"><button class="nav-item active" data-view="talk"><span>☏</span> 대화하기 <i>•</i></button><button class="nav-item" data-view="care"><span>✦</span> 통합 마음 관리</button><button class="nav-item" data-view="mood"><span>♡</span> 마음 돌보기</button><button class="nav-item" data-view="about"><span>ⓘ</span> 이 공간에 대해</button></nav>
+  <nav class="nav" aria-label="페이지"><button class="nav-item active" data-view="talk"><span>☏</span> 대화하기 <i>•</i></button><button class="nav-item" data-view="signature"><span>✧</span> 대표 기능 3가지</button><button class="nav-item" data-view="care"><span>✦</span> 통합 마음 관리</button><button class="nav-item" data-view="mood"><span>♡</span> 마음 돌보기</button><button class="nav-item" data-view="about"><span>ⓘ</span> 이 공간에 대해</button></nav>
   <section class="history"><p>이번 방문의 대화</p><span id="historySummary">첫 이야기를 기다리고 있어요.</span></section>
   <div class="sidebar-bottom"><div class="twig">♧</div><p>말하지 못했던 고민도<br>천천히 이야기해요.</p><button id="clearChat" class="text-button">대화 초기화 ↗</button><span>마음결 · 심리상담 대화</span></div>
 </aside>
 <div class="workspace">
-<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><span id="topbarEmotion" class="topbar-emotion" title="오늘의 마음 표현">🌱</span><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
+<header class="topbar"><div>당신의 마음이 쉬어가는 곳 <span class="tiny-dot">●</span></div><span id="topbarEmotion" class="topbar-emotion" title="오늘의 마음 표현">🌱</span><button type="button" class="topbar-signature" id="topbarSignature" aria-label="고민 방향잡기, 현실 대화 연습, 감정 변화 기록 열기">✧ 대표 기능</button><button type="button" class="topbar-care" id="topbarCare" aria-label="통합 마음 관리 화면 열기">✦ 마음 관리</button><div class="privacy"><span>♙</span> 대화 기록 미저장 · 외부 서비스 전송 <span class="status" id="status" title="대화 서비스 연결 상태">● 확인 중</span></div></header>
 <div class="panes">
 <main class="main" id="mainContent">
 <section id="intro" class="intro"><div class="botanical" aria-hidden="true"><svg viewBox="0 0 180 160"><circle cx="86" cy="75" r="62" fill="#eeefe2"/><circle cx="127" cy="30" r="22" fill="#f0cbaa"/><path d="M83 132v-81" stroke="#667f61" stroke-width="2.2"/><path d="M83 94C53 91 46 72 49 59c29 0 37 19 34 35M83 99c30-10 34-31 31-42C90 62 79 81 83 99" fill="#799471"/><path d="M83 70c-24-7-29-28-22-38 18 5 25 20 22 38" fill="#b1c1a2"/><path d="M60 133h50" stroke="#647b5d"/><path d="M20 126c43 20 96 20 142-2" stroke="#d5dac9" fill="none"/></svg></div><div class="eyebrow">마음이 쉬어 가는 대화</div><h1>혼자 안고 있던 마음,<br><span class="hero-accent">여기서 천천히 이야기해요.</span></h1><p>고민을 잘 설명하지 않아도 괜찮아요.<br>지금 어떤 일이 마음에 남아 있는지부터 나눠 주세요.</p><div class="intro-caption"><span>✦</span> 서두르지 않는 경청 · 감정과 생각 정리 · 나에게 맞는 작은 선택</div></section>
 <section id="suggestions" class="suggestions" aria-label="대화 시작 주제"><button class="suggestion" data-message="친구와 멀리 떨어져 지내다 보니 외롭고 연락하는 것도 부담스러워졌어요."><span class="suggestion-icon warm">♡</span><span><b>친구·관계 고민</b><small>멀어지는 것 같은 마음, 관계의 거리</small></span><em>↗</em></button><button class="suggestion" data-message="요즘 생각이 너무 많아서 쉬어도 쉬는 것 같지 않아요."><span class="suggestion-icon lavender">☾</span><span><b>걱정과 불안</b><small>꼬리를 무는 생각을 천천히 정리</small></span><em>↗</em></button><button class="suggestion" data-message="자꾸 저를 탓하게 되고 자신감이 떨어져요."><span class="suggestion-icon green">✧</span><span><b>자존감·자기비난</b><small>나를 바라보는 마음을 돌아보기</small></span><em>↗</em></button><button class="suggestion" data-message="조언보다 우선 그냥 제 이야기를 들어줬으면 좋겠어요."><span class="suggestion-icon sand">♧</span><span><b>그냥 털어놓고 싶어요</b><small>해결보다 먼저, 충분히 들어주기</small></span><em>↗</em></button></section>
 <section id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="대화 내용"></section>
+
+<section id="signaturePanel" class="signature-panel" hidden aria-label="마음결 대표 기능">
+  <header class="signature-hero">
+    <span class="signature-kicker">마음결의 세 가지 대표 기능</span>
+    <h2>복잡한 고민에 방향을 찾고,<br><span>어려운 대화를 연습해요.</span></h2>
+    <p>고민을 정리하고, 실제 관계에서 할 말을 연습하고, 날짜별 마음 표현을 살펴볼 수 있어요. 모든 기능은 참고용이며 전문 상담과 진단을 대신하지 않습니다.</p>
+  </header>
+  <div class="signature-tabs" role="tablist" aria-label="대표 기능 선택">
+    <button type="button" class="signature-tab active" data-feature="direction" role="tab" aria-selected="true">🧭 고민 방향잡기</button>
+    <button type="button" class="signature-tab" data-feature="practice" role="tab" aria-selected="false">💬 현실 대화 연습</button>
+    <button type="button" class="signature-tab" data-feature="timeline" role="tab" aria-selected="false">🌱 감정 변화 기록</button>
+  </div>
+  <section id="featureDirection" class="signature-body" role="tabpanel" aria-label="고민 방향잡기">
+    <div class="signature-heading"><span>01 · 고민 방향잡기</span><h3>요즘 나를 가장 많이 붙잡는 고민은?</h3><p>내가 말한 내용에서 반복적으로 나온 주제와 마음을 살펴봐요. 실제 말하지 않은 생각이나 감정을 추측하지 않습니다.</p></div>
+    <div class="direction-layout"><div class="direction-center"><div class="direction-circle"><span>🧭</span><b>고민의 중심</b><small>지금 내 마음에 중요한 것</small></div></div><div class="direction-signals" id="directionSignals">대화에서 반복되는 고민을 찾을 수 있어요. 먼저 이야기를 들려주세요.</div></div>
+    <div class="direction-insight"><h4>대화에서 드러난 바라는 점</h4><p id="directionWishes">원하는 것을 표현한 말이 있으면 함께 정리합니다.</p><h4>어떤 순서로 살펴보면 좋을까요?</h4><p id="directionNext">해결을 서두르지 않아도 괜찮아요. 마음에 걸리는 이야기를 먼저 나눠보세요.</p></div>
+    <button type="button" id="directionStart" class="signature-primary">이 고민을 이어서 이야기하기 <span>↗</span></button>
+    <p class="signature-disclosure">대화 표현의 출현을 단순 분류한 결과입니다. 원인, 성격, 질환을 판단하는 심리검사가 아닙니다.</p>
+  </section>
+  <section id="featurePractice" class="signature-body" role="tabpanel" aria-label="현실 대화 연습" hidden>
+    <div class="signature-heading"><span>02 · 현실 대화 연습</span><h3>꺼내기 어려웠던 말을 미리 연습해요.</h3><p>친구나 가족 등과 나누고 싶은 말을 가상 대화로 연습합니다. 상대방의 답변은 가능한 예시일 뿐, 실제 인물의 마음이나 반응을 예측하지 않습니다.</p></div>
+    <div class="practice-setup"><label>대화할 상대<select id="practicePartner"><option value="friend">친구</option><option value="family">가족</option><option value="partner">연인</option><option value="teacher">선생님</option><option value="colleague">직장 동료</option></select></label><label>연습할 상황<textarea id="practiceScenario" rows="3" maxlength="600" placeholder="예: 멀리 사는 친구에게 서운했던 마음을 상처 주지 않고 이야기하고 싶어요."></textarea></label><div class="practice-actions"><button type="button" id="practiceBegin" class="signature-primary">대화 연습 시작하기</button><button type="button" id="practiceClear" class="signature-secondary">처음부터 다시</button></div></div>
+    <div id="practiceTranscript" class="practice-transcript" aria-live="polite"><p class="practice-empty">상대와 상황을 정하고 시작하면 연습 대화가 나타납니다.</p></div>
+    <form id="practiceForm" class="practice-form"><label class="sr-only" for="practiceText">연습할 말</label><textarea id="practiceText" rows="2" maxlength="1200" placeholder="상대에게 하고 싶은 말을 적어 보세요." disabled></textarea><button type="submit" id="practiceSend" disabled>답변 연습하기</button></form>
+    <div id="practiceStatus" class="signature-disclosure" role="status">연습 내용은 상담 기록에 자동으로 저장되지 않습니다. 외부 대화 모델로 전송할 때는 사전 동의가 필요합니다.</div>
+    <button type="button" id="practiceReflect" class="signature-secondary" disabled>연습한 말을 상담에서 정리하기 <span>↗</span></button>
+  </section>
+  <section id="featureTimeline" class="signature-body" role="tabpanel" aria-label="감정 변화 기록" hidden>
+    <div class="signature-heading"><span>03 · 감정 변화 기록</span><h3>날짜별로 남겨진 마음 표현을 돌아봐요.</h3><p>기록이 실제로 있는 날짜만 표시해요. 대화 표현이 늘거나 줄었다고 해서 감정이 좋아지거나 나빠졌다고 판단하지 않습니다.</p></div>
+    <div id="timelineOverview" class="timeline-overview">현재 대화 기록을 확인하고 있어요.</div>
+    <div id="timelineItems" class="timeline-items" aria-live="polite"><p class="timeline-empty">대화를 나누면 날짜별 기록이 이곳에 표시됩니다.</p></div>
+    <p class="signature-disclosure">구글 계정 저장이 설정되지 않은 경우 현재 화면에 남아 있는 대화만 볼 수 있습니다. 기록이 없는 날의 감정은 추정하지 않습니다.</p>
+    <button type="button" id="timelineContinue" class="signature-primary">오늘의 이야기 시작하기 <span>↗</span></button>
+  </section>
+</section>
 <section id="carePanel" class="care-panel" hidden aria-label="마음결 통합 마음관리 솔루션">
   <div class="care-header"><div class="care-eyebrow">마음결 · 통합 마음 관리</div><h2>마음을 돌보는 방법을<br><span>한곳에 모았어요.</span></h2><p>누군가에게 털어놓고 싶을 때부터 마음을 정리하고 잠깐 쉬고 싶을 때까지, 지금 필요한 것을 선택해 보세요.</p></div>
   <section class="emotion-daily" aria-labelledby="emotionTitle"><div class="emotion-heading"><div><span class="care-eyebrow">오늘의 마음 표현</span><h3 id="emotionTitle">오늘의 감정</h3><p>오늘 나눈 이야기와 직접 고른 기분을 바탕으로 나타낸 참고 비율이에요. 정확한 감정 측정이나 진단은 아닙니다.</p></div><div id="emotionFace" class="emotion-face" aria-label="오늘 가장 많이 나타난 감정">🌱</div></div><div class="emotion-main"><strong id="emotionPrimary">오늘의 마음을 함께 알아볼까요?</strong><span id="emotionPrimaryPercent"></span></div><div class="emotion-bars" id="emotionBars"><div class="emotion-empty">아직 오늘 나눈 이야기가 없어요. 대화를 시작하면 여기에 표시됩니다.</div></div><div class="emotion-footer"><span>이 비율은 표현의 출현 정도를 단순 계산하며, 실제 심리 상태를 판단하지 않습니다.</span><button type="button" id="emotionTalk">오늘의 마음 이야기하기 ↗</button></div></section>
@@ -755,9 +835,10 @@ function resetChat(){if(busy)return;callInterface.end();speechInput.cancel();voi
 $('newChat').addEventListener('click',resetChat);$('clearChat').addEventListener('click',resetChat);
 function selectView(view){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-  const separate=view==='about'||view==='care';
+  const separate=view==='about'||view==='care'||view==='signature';
   $('aboutPanel').hidden=view!=='about';
   $('carePanel').hidden=view!=='care';
+  $('signaturePanel').hidden=view!=='signature';
   if(separate){
     $('intro').hidden=true;$('suggestions').hidden=true;$('messages').hidden=true;
   }else{
@@ -767,9 +848,12 @@ function selectView(view){
   $('topbarCare').textContent=view==='care'?'← 대화하기':'✦ 마음 관리';
   $('topbarCare').setAttribute('aria-label',view==='care'?'대화 화면 열기':'통합 마음 관리 화면 열기');
   if(view==='care')$('carePanel').scrollIntoView({behavior:'smooth',block:'start'});
+  $('topbarSignature').textContent=view==='signature'?'← 대화하기':'✧ 대표 기능';
+  if(view==='signature'){window.maumgyeolSignature?.refresh();$('signaturePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
 $('topbarCare').addEventListener('click',()=>selectView($('carePanel').hidden?'care':'talk'));
+$('topbarSignature').addEventListener('click',()=>selectView($('signaturePanel').hidden?'signature':'talk'));
 document.querySelectorAll('[data-mood]').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('[data-mood]').forEach(x=>x.classList.remove('selected'));
  b.classList.add('selected');
