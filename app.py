@@ -36,6 +36,7 @@ FIREBASE_JS = Path(__file__).with_name("firebase-client.js")
 MODEL_RELEASE_JSON = Path(__file__).with_name("model-release.json")
 COUNSELING_REFERENCE_JSON = Path(__file__).with_name("counseling_reference.json")
 LOCAL_WORKER_JS = Path(__file__).with_name("local-model-worker.js")
+CHAT_GUARDRAILS_JS = Path(__file__).with_name("chat-guardrails.js")
 INDEX = Path(__file__).with_name("index.html")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
@@ -283,6 +284,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,payload,"application/json; charset=utf-8")
         if p=="/local-model-worker.js":
             return self.send(200,LOCAL_WORKER_JS.read_bytes(),"text/javascript; charset=utf-8")
+        if p=="/chat-guardrails.js":
+            return self.send(200,CHAT_GUARDRAILS_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/api/status":
             ready = bool(MODEL_URL) and model_available()
             if MODEL_PROVIDER == "ollama":
