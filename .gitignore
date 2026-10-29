@@ -4,6 +4,9 @@ __pycache__/
 .env.*
 !.env.example
 .venv/
+training/data/
+training/private/
+training/reviews/
 training/data/*.jsonl
 training/outputs/
 outputs/
