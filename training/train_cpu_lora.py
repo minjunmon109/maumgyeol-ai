@@ -64,6 +64,8 @@ def parse(argv=None):
     p.add_argument("--learning-rate", type=float, default=1e-4)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--cpu-dtype", choices=["bfloat16","float32"], default="bfloat16")
+    p.add_argument("--max-training-examples",type=int,default=0,help="0 means all")
+    p.add_argument("--max-eval-examples",type=int,default=0,help="0 means all")
     p.add_argument("--dry-run", action="store_true", help="Validate dataset without any Torch dependencies")
     return p.parse_args(argv)
 
@@ -93,6 +95,8 @@ def main(argv=None):
     if args.max_steps < 1 or args.max_length < 64:
         raise SystemExit("max-steps >=1 and max-length >=64 required")
     train, val = read_examples(args.train), read_examples(args.val)
+    if args.max_training_examples>0: train=train[:args.max_training_examples]
+    if args.max_eval_examples>0: val=val[:args.max_eval_examples]
     if {p.resolve() for p in input_files(args.train)} & {p.resolve() for p in input_files(args.val)}:
         raise SystemExit("Training and validation must be separate files")
     tr_ids={x["session"] for x in train if x.get("session")}
@@ -181,6 +185,8 @@ def main(argv=None):
         "smoke_test_only": args.max_steps < 50,
         "training_data_provenance": "confirm source permission independently; data are not clinically validated",
         "train_loss": result.training_loss,
+        "dataset_limited":bool(args.max_training_examples>0 or args.max_eval_examples>0),
+        "experimental_smoke_training":bool(args.max_steps<20 or args.max_training_examples>0),
         "val_loss": metrics.get("eval_loss"),
         "data_license_independently_verified": False,
         "clinician_reviewed": False, "webllm_compatible_artifacts": False,
