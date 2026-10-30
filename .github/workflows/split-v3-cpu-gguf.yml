@@ -1,0 +1,111 @@
+name: Prepare original private V3 CPU GGUF in download-sized pieces (NO PUBLIC RELEASE)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/split-v3-cpu-gguf.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: maumgyeol-v3-CPU-Q4_K_M-EXPERIMENTAL-NOT-APPROVED
+          run-id: "41009500024"
+          github-token: ${{ github.token }}
+          path: recovered_v3
+      - name: Verify trained model identity and split without modifying weights
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          root=Path('recovered_v3')
+          files=list(root.rglob('maumgyeol-v3-q4_k_m.gguf'))
+          assert len(files)==1,files
+          weights=files[0]
+          report_files=list(root.rglob('cpu-gguf-provenance.json'))
+          assert len(report_files)==1,report_files
+          report=json.loads(report_files[0].read_text())
+          digest=hashlib.file_digest(weights.open('rb'), 'sha256').hexdigest()
+          assert digest==report['gguf_sha256'], 'GGUF weights SHA did not match'
+          assert report['adapter_sha256']=='71f40a7dee87f55b7fd948ce21b5842a6608f60a5f17f6319fd767004eeec565'
+          assert report['release_approved'] is False
+          print('PRIVATE_GGUF_SHA='+digest,'bytes='+str(weights.stat().st_size))
+          PY
+          mkdir -p download-pieces
+          split --bytes=175M --numeric-suffixes=0 --suffix-length=2 "$(find recovered_v3 -name maumgyeol-v3-q4_k_m.gguf | head -1)" download-pieces/maumgyeol-v3.gguf.part-
+          cp "$(find recovered_v3 -name cpu-gguf-provenance.json | head -1)" download-pieces/provenance.json
+          ls -lh download-pieces
+          python - <<'PY'
+          from pathlib import Path
+          import json,hashlib
+          p=Path('download-pieces')
+          chunks=sorted(p.glob('maumgyeol-v3.gguf.part-*'))
+          assert 5 <= len(chunks) <= 7, len(chunks)
+          total=hashlib.sha256()
+          for chunk in chunks:
+              with chunk.open('rb') as f:
+                  for block in iter(lambda:f.read(1024*1024),b''):
+                      total.update(block)
+          report=json.loads((p/'provenance.json').read_text())
+          assert total.hexdigest()==report['gguf_sha256']
+          print('SPLIT_PIECES='+str(len(chunks)))
+          print('SPLIT_RECOMBINATION_MATCHES_REAL_MODEL=true')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-piece-00
+          path: download-pieces/maumgyeol-v3.gguf.part-00
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-piece-01
+          path: download-pieces/maumgyeol-v3.gguf.part-01
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-piece-02
+          path: download-pieces/maumgyeol-v3.gguf.part-02
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-piece-03
+          path: download-pieces/maumgyeol-v3.gguf.part-03
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-piece-04
+          path: download-pieces/maumgyeol-v3.gguf.part-04
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-piece-05
+          path: download-pieces/maumgyeol-v3.gguf.part-05
+          compression-level: 0
+          if-no-files-found: warn
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-piece-06
+          path: download-pieces/maumgyeol-v3.gguf.part-06
+          compression-level: 0
+          if-no-files-found: warn
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-private-gguf-provenance
+          path: download-pieces/provenance.json
+          retention-days: 7
