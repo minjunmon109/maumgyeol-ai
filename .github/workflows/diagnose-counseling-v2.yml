@@ -44,4 +44,17 @@ jobs:
           print("MAX_TRAINING_STEP="+(str(max(steps)) if steps else "NONE_REPORTED"))
           print("GPU_HOLDOUT_EVAL_MARKERS="+str(logs.stdout.count("EVAL_PROGRESS")))
           print("GPU_V2_SUCCESS_MARKER="+str("GPU COUNSELING V2 SUCCESS" in logs.stdout))
+          phases=[
+             ("repo_cloned","Optional torchao compatibility issue resolved"),
+             ("data_built","training_mix"),
+             ("dry_run_passed","validated_not_trained"),
+             ("gpu_trainer_started","training_device"),
+             ("model_training_started","trainable params"),
+             ("real_holdout_started","Verified actual 20-step experimental Kaggle GPU adapter"),
+             ("real_holdout_finished","COMPARISON_RESULT"),
+          ]
+          for label,needle in phases:
+              print("PHASE_"+label.upper()+"="+str(needle in logs.stdout))
+          print("KAGGLE_LOG_BYTES="+str(len(logs.stdout)))
+          print("OUTPUT_ARTIFACT_DECLARED="+str("adapter_model.safetensors" in logs.stdout))
           PY
