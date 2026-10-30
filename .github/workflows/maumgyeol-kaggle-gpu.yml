@@ -39,7 +39,7 @@ jobs:
           if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", username):
               raise SystemExit("Invalid KAGGLE_USERNAME. Use the Kaggle profile username (not email, token, or display name).")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
-              env.write("KAGGLE_KERNEL_HANDLE=" + username + "/maumgyeol-kmi-gpu-pilot\\n")
+              print("KAGGLE_KERNEL_HANDLE=" + username + "/maumgyeol-kmi-gpu-pilot", file=env)
           print("Kaggle username format accepted", flush=True)
           metadata = {
             "id": f"{username}/maumgyeol-kmi-gpu-pilot",
