@@ -1,0 +1,21 @@
+name: Hybrid experiment smoke test
+on:
+  push:
+    branches:
+      - experiment/hybrid-counseling-safety-20261030
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate Python scripts and 30 cases without model downloads
+        run: |
+          python -m py_compile training/hybrid_safety_eval.py training/run_hybrid_candidates.py
+          python -c 'import json,pathlib; a=[json.loads(x) for x in pathlib.Path("training/hybrid_cases.jsonl").read_text().splitlines() if x.strip()]; assert len(a)==30; assert len({x["case_id"] for x in a})==30; print("VALIDATED 30 synthetic cases")'
