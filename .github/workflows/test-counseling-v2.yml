@@ -1,0 +1,26 @@
+name: Validate counseling v2 dataset and safety gate (no GPU)
+on:
+  push:
+    branches: [main]
+    paths:
+      - training/build_counseling_safety_sft.py
+      - training/safety_eval_v2.py
+      - training/compare_gpu_lora.py
+      - training/test_counseling_v2.py
+      - .github/workflows/test-counseling-v2.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile all safety and training additions
+        run: python -m py_compile training/build_counseling_safety_sft.py training/safety_eval_v2.py training/test_counseling_v2.py training/compare_gpu_lora.py training/kaggle_gpu_pilot.py
+      - name: Synthetic provenance, non-leakage, dangerous negative controls
+        run: python -u training/test_counseling_v2.py
