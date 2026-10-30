@@ -32,6 +32,13 @@ print("GPU:", torch.cuda.get_device_name(0), flush=True)
 run("git", "clone", "--depth", "1", "--branch", BRANCH, REPO, ROOT)
 run(sys.executable, "-m", "pip", "install", "-q",
     "transformers>=4.51,<5", "peft", "accelerate", "safetensors")
+# Kaggle 2026 preinstalls torchao 0.10; recent Transformers rejects it (<0.16).
+# torchao is optional for regular FP16 LoRA, so remove it instead of changing torch.
+run(sys.executable, "-m", "pip", "uninstall", "-y", "torchao")
+import importlib.util
+if importlib.util.find_spec("torchao") is not None:
+    raise RuntimeError("Unsupported torchao remains installed; cannot train safely")
+print("Optional torchao compatibility issue resolved", flush=True)
 run(sys.executable, ROOT/"training/verify_training_license.py")
 run(sys.executable, ROOT/"training/train_cpu_lora.py",
     "--train", str(ROOT/"training/open_data/kmi_train_*.jsonl"),
