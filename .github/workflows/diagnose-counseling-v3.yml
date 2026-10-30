@@ -1,0 +1,50 @@
+name: Inspect PRIVATE V3 Kaggle failure markers (redacted diagnostics)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/diagnose-counseling-v3.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KERNEL_HANDLE: huhuukgghhuu/maumgyeol-counseling-v3-gpu
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Kaggle CLI
+        run: python -m pip -q install 'kaggle>=2.2.5'
+      - name: Print only safe error identifiers and execution stage
+        run: |
+          python - <<'PY'
+          import os,re,subprocess
+          name=os.environ["KERNEL_HANDLE"]
+          assert os.environ.get("KAGGLE_API_TOKEN")
+          status=subprocess.run(["kaggle","kernels","status",name],capture_output=True,text=True,timeout=50)
+          m=re.search(r"KernelWorkerStatus[.]([A-Z_]+)",status.stdout+status.stderr)
+          print("KAGGLE_V3_STATUS="+(m.group(1) if m else "UNKNOWN"))
+          log=subprocess.run(["kaggle","kernels","logs",name],capture_output=True,text=True,timeout=65)
+          content=log.stdout+"\n"+log.stderr
+          print("LOGS_AVAILABLE="+str(len(content)>50))
+          print("LOGS_LENGTH="+str(len(content)))
+          terms=["TRAINING_SOURCE_COMMIT=","GPU_DEVICE=","TRAINING_DATA=",
+              "TRAIN_PROGRESS","EVAL_PROGRESS","EXPERIMENT_COMPLETE_90_STEPS_V3"]
+          for term in terms:
+              count=content.count(term)
+              print("STAGE_COUNT "+term+" "+str(count))
+          safe=[]
+          for raw in content.splitlines():
+              line=raw.strip()
+              if not re.search(r"Traceback|SyntaxError|CalledProcessError|ModuleNotFoundError|FileNotFoundError|RuntimeError|AssertionError|ValueError|fatal:|error:|subprocess|git fetch|Python script failed",line,re.I):
+                  continue
+              if re.search(r"password|token|bearer|auth|secret|api_key|api.key|https?://|@|[A-Fa-f0-9]{45,}",line):
+                  continue
+              safe.append(line[-340:])
+          for line in safe[-22:]:print("DIAGNOSTIC_ERROR="+line)
+          PY
