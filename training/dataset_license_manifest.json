@@ -1,0 +1,34 @@
+{
+  "policy": "fail_closed_no_unverified_deployment",
+  "sources": [
+    {
+      "id": "kmi_2025",
+      "title": "KMI: A Dataset of Korean Motivational Interviewing Dialogues for Psychotherapy",
+      "source_url": "https://github.com/hjkim811/KMI",
+      "license_url": "https://github.com/hjkim811/KMI/blob/main/LICENSE",
+      "license": "CC-BY-4.0",
+      "attribution": "Kim, Hyunjong et al. (2025), NAACL 2025, https://aclanthology.org/2025.naacl-long.541/",
+      "allowed_for_experimental_training": true,
+      "usage_limitations": "Attribution required. Synthetic MI dialogues, not private actual patient transcripts. Clinical suitability is not validated by the license.",
+      "files_glob": "training/open_data/kmi_*.jsonl",
+      "required_source_field": "Kim et al. KMI NAACL 2025 CC BY 4.0"
+    },
+    {
+      "id": "empathetic_dialogues",
+      "source_url": "https://github.com/facebookresearch/EmpatheticDialogues",
+      "license": "CC-BY-NC-4.0",
+      "allowed_for_experimental_training": false,
+      "usage_limitations": "Noncommercial only; do not include in product training without separate permission."
+    },
+    {
+      "id": "esconv",
+      "source_url": "https://github.com/thu-coai/Emotional-Support-Conversation",
+      "license": "NOT_YET_VERIFIED",
+      "allowed_for_experimental_training": false,
+      "usage_limitations": "Not included without verified dataset rights."
+    }
+  ],
+  "clinical_review": "NOT_PERFORMED",
+  "iphone_device_validation": "NOT_PERFORMED",
+  "deployment_authorization": false
+}
