@@ -224,27 +224,48 @@ def upstream_message(status):
     return UPSTREAM_ERRORS.get(status,"외부 AI 제공업체에 요청하지 못했습니다. 관리자에게 문의해 주세요.")
 
 def report_upstream_error(exc):
-    """Only record provider HTTP code and recognized machine-readable error identifiers.
-    Never log upstream response text, user conversations, credentials or request payloads.
-    """
-    code = getattr(exc,"code",None)
-    remote_code = "unknown"
+    """Categorize provider failures without recording secrets or user content."""
+    status = getattr(exc, "code", None)
+    category = "unclassified"
+    error_type = "unknown"
     try:
-        response = json.loads(exc.read(4096).decode("utf-8",errors="replace"))
-        err = response.get("error",{})
-        candidate = err.get("code") if isinstance(err,dict) else None
-        if isinstance(candidate,str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,64}",candidate):
-            remote_code = candidate
-    except (ValueError,TypeError,AttributeError,UnicodeError):
-        pass
-    print("UPSTREAM_DIAGNOSTIC status="+str(code)+" reason_code="+remote_code,flush=True)
-    return remote_code
+        raw = exc.read(4096).decode("utf-8", errors="replace")
+        data = json.loads(raw)
+        item = data.get("error", {}) if isinstance(data, dict) else {}
+        if isinstance(item, dict):
+            raw_type = item.get("type")
+            if isinstance(raw_type, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", raw_type):
+                error_type = raw_type
+            code = item.get("code")
+            message = item.get("message", "")
+            combined = (str(code or "") + " " + str(message or "")).lower()[:1000]
+            if "model_permission_blocked_org" in combined or ("organization" in combined and ("block" in combined or "permission" in combined)):
+                category = "organization_model_block"
+            elif "model_permission_blocked_project" in combined or ("project" in combined and ("block" in combined or "permission" in combined)):
+                category = "project_model_block"
+            elif any(s in combined for s in ("cloudflare", "security policy", "waf", "firewall")):
+                category = "network_security_block"
+            elif any(s in combined for s in ("restricted", "disabled", "suspended", "organization")):
+                category = "account_restriction"
+            elif any(s in combined for s in ("permission", "not allowed", "forbidden", "access denied")):
+                category = "permission_restriction"
+        elif isinstance(item, str):
+            category = "unstructured_error"
+    except (ValueError, TypeError, AttributeError, UnicodeError):
+        category = "non_json_or_empty_response"
+    print("UPSTREAM_DIAGNOSTIC status=" + str(status) + " category=" + category + " error_type=" + error_type, flush=True)
+    return category
 
-def upstream_detail(status,remote_code):
-    if status==403 and remote_code in ("model_permission_blocked_org","model_permission_blocked_project","permissions_error"):
-        return "Groq에서 이 모델의 사용 권한이 차단되었습니다. Groq 콘솔의 Organization / Project → Limits → Model Permissions에서 모델 허용 여부를 확인해 주세요."
-    if status==403:
-        return "Groq 서버가 요청을 거부했습니다(403). 계정의 모델 권한, 프로젝트 제한 및 API 키 상태를 확인해 주세요."
+def upstream_detail(status, remote_code):
+    if status == 403:
+        hints = {
+            "organization_model_block": "Groq 조직 수준에서 모델이 차단됐습니다. Settings → Organization → Limits → Model Permissions를 확인해 주세요.",
+            "project_model_block": "Groq 프로젝트에서 모델이 차단됐습니다. Settings → Projects → Limits → Model Permissions를 확인해 주세요.",
+            "network_security_block": "Groq 또는 네트워크 보안 정책이 요청을 차단했습니다. 서버 로그의 분류값으로 Groq 지원팀에 문의해 주세요.",
+            "account_restriction": "Groq 계정이나 조직에 접근 제한이 있을 수 있습니다. Groq 콘솔과 지원팀에서 확인해 주세요.",
+            "permission_restriction": "Groq 권한이 거부됐습니다. 조직·프로젝트의 모델 권한을 확인해 주세요.",
+        }
+        return hints.get(remote_code, "Groq 요청이 403으로 거부됐습니다. 서버 로그의 category 및 error_type을 확인해 주세요.")
     return upstream_message(status)
 
 def firebase_user(authorization):
