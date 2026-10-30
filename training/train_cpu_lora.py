@@ -64,6 +64,8 @@ def parse(argv=None):
     p.add_argument("--model", default=BASE)
     p.add_argument("--output", default=str(ROOT / "outputs" / "maumgyeol-qwen25-cpu-lora"))
     p.add_argument("--max-steps", type=int, default=100)
+    p.add_argument("--gradient-accumulation-steps", type=int, default=4,
+                   help="CPU pilot speed tradeoff: 1 uses four times fewer microbatches than the default 4")
     p.add_argument("--max-length", type=int, default=256)
     p.add_argument("--learning-rate", type=float, default=1e-4)
     p.add_argument("--seed", type=int, default=42)
@@ -96,6 +98,8 @@ def make_features(row, tokenizer, max_length):
 
 def main(argv=None):
     args = parse(argv)
+    if args.gradient_accumulation_steps < 1:
+        raise SystemExit("gradient-accumulation-steps >= 1 required")
     if args.max_steps < 1 or args.max_length < 64:
         raise SystemExit("max-steps >=1 and max-length >=64 required")
     train, val = read_examples(args.train), read_examples(args.val)
@@ -162,7 +166,7 @@ def main(argv=None):
     output.mkdir(parents=True, exist_ok=True)
     training_args = TrainingArguments(
         output_dir=str(output), use_cpu=True, fp16=False, bf16=False,
-        optim="adamw_torch", per_device_train_batch_size=1, gradient_accumulation_steps=4,
+        optim="adamw_torch", per_device_train_batch_size=1, gradient_accumulation_steps=args.gradient_accumulation_steps,
         per_device_eval_batch_size=1, learning_rate=args.learning_rate,
         max_steps=args.max_steps, save_strategy="no", eval_strategy="no",
         logging_steps=5, report_to="none", seed=args.seed, remove_unused_columns=False,
@@ -183,6 +187,7 @@ def main(argv=None):
         "base_compatible_with_site": args.model == BASE,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(),
         "training_device": "cpu", "method": "LoRA CPU", "base_weight_dtype": args.cpu_dtype,
+        "gradient_accumulation_steps": args.gradient_accumulation_steps,
         "train_examples": len(train), "validation_examples": len(val),
         "train_sha256": sha256(args.train), "val_sha256": sha256(args.val),
         "adapter_sha256": sha256(adapter), "steps": int(result.global_step),
