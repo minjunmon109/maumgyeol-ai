@@ -347,6 +347,7 @@ body.focus-mode .rightbar{display:none}body.focus-mode .panes{grid-template-colu
 <section class="note-panel"><div class="quote">“</div>오늘을 잘 보내지 못했어도,<br>당신은 충분히 소중해요.<small>오늘의 작은 문장</small></section><div class="right-footer">한 번에 한 걸음.</div></aside>
 </div>
 </div></div>
+<script src="/counseling-guard.js"></script>
 <script>'use strict';
 const $=id=>document.getElementById(id);
 window.maumgyeolAccount={required:false,ready:false,getToken:async()=>null,saveMessage:()=>Promise.resolve(),newConversation:()=>{},signOut:()=>{}};
@@ -586,7 +587,21 @@ const signatureTools=(()=>{
     $feature('practiceStatus').textContent='가상 상대방의 답변을 생성하는 중이에요…';
     const pending=addPracticeLine('assistant','답변을 준비하고 있어요…');
     try{
-      const headers={'Content-Type':'application/json'};
+      // Prevent dangerous or misleading model replies before reaching external providers.
+    const guard=window.MaumgyeolCareGuard;
+    if(!guard||typeof guard.preflight!=='function'||typeof guard.audit!=='function')
+      throw Error('안전 보호 모듈을 불러오지 못했습니다.');
+    const precheck=guard.preflight(messages);
+    if(precheck.skipModel){
+      const reply=precheck.response;
+      pending.wrapper.remove();
+      messages.push({role:'assistant',content:reply,at:Date.now()});
+      addMessage('assistant',reply,{safety:precheck.safety});
+      voicePlayer.onFinal(reply);
+      completed=true;
+      return;
+    }
+    const headers={'Content-Type':'application/json'};
       if(window.maumgyeolAccount.required){
         const token=await window.maumgyeolAccount.getToken();
         if(!token)throw Error('로그인이 필요합니다.');
@@ -1110,10 +1125,8 @@ async function sendMessage(content){
         if(!line.trim())continue;
         let evt;try{evt=JSON.parse(line);}catch{continue;}
         if(evt.type==='preview'&&typeof evt.text==='string'){
-          voicePlayer.onPreview(evt.text);
-          pending.bubble.textContent=evt.text;
-          pending.bubble.classList.remove('thinking');
-          scrollBottom();
+          // Unscreened model tokens must never be shown or spoken to users.
+          // The final message is displayed only after CareGuard audits it.
         }else if(evt.type==='final'&&typeof evt.reply==='string'){
           answer=evt.reply;safety=evt.safety||'none';source=evt.source||'model';
         }else if(evt.type==='error')throw Error(evt.error||'대화에 문제가 생겼습니다.');
@@ -1121,13 +1134,17 @@ async function sendMessage(content){
       if(chunk.done)break;
     }
     if(!answer)throw Error('응답을 완성하지 못했습니다. 다시 시도해 주세요.');
+    const generated=answer;
+    const checked=guard.audit(generated,messages);
+    answer=checked.response;
+    safety=checked.safety;
     completed=true;
     if(fromCall){
       if(callInterface.isActive())callInterface.answer(answer,safety,source);
     }else voicePlayer.onFinal(answer);
     pending.wrapper.remove();messages.push({role:'assistant',content:answer,at:Date.now()});
     if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
-    addMessage('assistant',answer,{safety});
+    addMessage('assistant',answer,{safety:checked.safety});
 
   }catch(e){
     voicePlayer.stop();
@@ -1263,7 +1280,7 @@ window.maumgyeolUI={
 fetch('/api/status').then(r=>r.json()).then(data=>{
   const outside=!!data.external;const ready=!!data.ready;const local= data.provider==='kilo-anonymous';
   const wrap=$('externalConsentWrap');wrap.hidden=!outside;wrap.style.display=outside?'flex':'none';
-  $('status').textContent=local?(ready?'● 대화 준비됨':(data.model_status==='checking'?'● 대화 준비 중':'● 연결 확인 필요')):(outside?(ready?'● 대화 준비됨':'● 연결 확인 필요'):(ready?'● 로컬 AI 준비됨':'● 로컬 모델 연결 필요'));
+  $('status').textContent=local?(ready?'● AI 연결 설정됨':(data.model_status==='checking'?'● 대화 준비 중':'● 연결 확인 필요')):(outside?(ready?'● 대화 준비됨':'● 연결 확인 필요'):(ready?'● 로컬 AI 준비됨':'● 로컬 모델 연결 필요'));
   $('status').className='status '+(ready?'online':'offline');
   $('status').title=local?'자동 대화 시스템 연결 상태입니다. 실제 상담·치료를 대신하지 않습니다.':(outside?'외부 제공업체 연결 상태입니다.':'운영 컴퓨터의 Ollama와 모델 설치 상태를 확인해 주세요.');
   if(outside&&!local){wrap.querySelector('span').textContent='설정된 외부 모델 서버에 대화 내용을 전송하는 데 동의합니다.';}
