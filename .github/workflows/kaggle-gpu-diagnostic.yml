@@ -31,7 +31,7 @@ jobs:
           result=subprocess.run(["kaggle","kernels","status",handle],
                                text=True,capture_output=True,timeout=40)
           status_text=result.stdout+"\n"+result.stderr
-          match=re.search(r"KernelWorkerStatus\\.([A-Z_]+)",status_text)
+          match=re.search("KernelWorkerStatus[.]([A-Z_]+)",status_text)
           if match:
               state=match.group(1)
               print("KAGGLE_REMOTE_STATE="+state)
@@ -44,7 +44,7 @@ jobs:
           if state in {"COMPLETE","ERROR"}:
               logs=subprocess.run(["kaggle","kernels","logs",handle],
                   text=True,capture_output=True,timeout=60)
-              progress=[int(n) for n in re.findall(r"TRAIN_PROGRESS\\s+(\\d+)/20",logs.stdout)]
+              progress=[int(n) for n in re.findall("TRAIN_PROGRESS +([0-9]+)/20",logs.stdout)]
               print("LAST_REPORTED_TRAIN_STEP="+(str(max(progress)) if progress else "NOT_REPORTED"))
               print("TRAIN_SUCCESS_MARKER="+str("GPU PILOT SUCCESS: 20/20" in logs.stdout))
               print("KAGGLE_LOG_FETCH_OK="+str(logs.returncode==0))
