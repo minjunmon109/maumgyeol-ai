@@ -39,6 +39,9 @@ LOCAL_WORKER_JS = Path(__file__).with_name("local-model-worker.js")
 CARE_GUARD_JS = Path(__file__).with_name("counseling-guard.js")
 INDEX = Path(__file__).with_name("index.html")
 V3_PREVIEW = Path(__file__).with_name("v3-preview.html")
+CPU_V3_LAB_HTML = Path(__file__).with_name("cpu-v3-lab.html")
+CPU_V3_LAB_JS = Path(__file__).with_name("cpu-v3-lab.js")
+CPU_MODEL_CONFIG = Path(__file__).with_name("cpu-model-config.json")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
 PROMPT = COUNSELOR_PROMPT
@@ -277,6 +280,14 @@ class Handler(BaseHTTPRequestHandler):
             # Replayed, explicitly labeled synthetic assessment answers only;
             # never allow an unsafe unvalidated V3 model to perform live counseling.
             return self.send(200,V3_PREVIEW.read_bytes(),"text/html; charset=utf-8")
+        if p=="/cpu-v3-lab":
+            # Experiments run V3 weights in the visitor CPU/browser RAM, never on Render.
+            # Protected by the same entry gate as the main chat.
+            return self.send(200,CPU_V3_LAB_HTML.read_bytes(),"text/html; charset=utf-8")
+        if p=="/cpu-v3-lab.js":
+            return self.send(200,CPU_V3_LAB_JS.read_bytes(),"text/javascript; charset=utf-8")
+        if p=="/cpu-model-config.json":
+            return self.send(200,CPU_MODEL_CONFIG.read_bytes(),"application/json; charset=utf-8")
         if p=="/firebase-client.js":
             return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/counseling_reference.json":
