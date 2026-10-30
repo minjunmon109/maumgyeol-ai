@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "mode": "experimental_cpu_local_only",
+  "active": false,
+  "model_url": null,
+  "format": "GGUF",
+  "runtime": "wllama WebAssembly CPU",
+  "adapter_sha256": "71f40a7dee87f55b7fd948ce21b5842a6608f60a5f17f6319fd767004eeec565",
+  "quantization": "Q4_K_M",
+  "default_production_counseling": false,
+  "release_approved": false,
+  "reason": "No persistent authorized GGUF hosting, no professional review, and V3 failed high-risk counseling evaluations. Local test-file mode only."
+}
