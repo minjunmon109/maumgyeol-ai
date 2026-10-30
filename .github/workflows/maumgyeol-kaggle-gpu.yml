@@ -52,7 +52,7 @@ jobs:
               print("KAGGLE_KERNEL_HANDLE=" + username + "/maumgyeol-counseling-v2-gpu", file=env)
           print("Kaggle username format accepted", flush=True)
           metadata = {
-            "id": f"{username}/maumgyeol-kmi-gpu-pilot",
+            "id": f"{username}/maumgyeol-counseling-v2-gpu",
             "title": "Maumgyeol Counseling V2 GPU",
             "code_file": "maumgyeol_gpu.py",
             "language": "python",
