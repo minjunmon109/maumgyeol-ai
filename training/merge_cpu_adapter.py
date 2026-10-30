@@ -1,4 +1,4 @@
-"""Merge a genuinely trained LoRA adapter into a full HF model for MLC conversion.
+"""Merge a genuinely trained CPU or GPU LoRA adapter into an HF-only checkpoint.
 
 This is a separate, memory-intensive CPU operation. It does NOT produce a
 WebGPU-compatible artifact by itself. Do not upload model/chat data publicly.
@@ -30,26 +30,40 @@ def main():
         raise SystemExit("Adapter was not produced by the supervised training pipeline")
     if manifest.get("base_model") != BASE or not manifest.get("base_compatible_with_site"):
         raise SystemExit("This adapter does not match the production Qwen2.5 1.5B model")
+    if manifest.get("approved_for_release") is not False or manifest.get("clinician_reviewed") is not False:
+        raise SystemExit("Experimental status missing or unexpected; refusing merge")
+    if manifest.get("training_device") not in ("cpu","cuda") or int(manifest.get("steps",0)) < 50:
+        raise SystemExit("Missing valid training device or inadequate experimental steps")
+    if manifest.get("webllm_compatible_artifacts") is not False:
+        raise SystemExit("Model must remain explicitly marked NOT web-compatible")
+    if manifest.get("base_model") != BASE or not manifest.get("base_compatible_with_site"):
+        raise SystemExit("This adapter does not match the production Qwen2.5 1.5B model")
     weights = adapter / "adapter_model.safetensors"
     if not weights.is_file() or sha256(weights) != manifest.get("adapter_sha256"):
         raise SystemExit("Adapter weights are absent or their checksum is invalid")
     import torch
+    if manifest.get("training_device") == "cuda" and not torch.cuda.is_available():
+        print("GPU-trained adapter will be merged on CPU; this is memory-intensive")
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import PeftModel
     base = AutoModelForCausalLM.from_pretrained(
-        BASE, torch_dtype=torch.float32, low_cpu_mem_usage=True, trust_remote_code=False)
+        BASE, dtype=torch.float32, low_cpu_mem_usage=True, trust_remote_code=False)
     merged = PeftModel.from_pretrained(base, str(adapter)).merge_and_unload()
     out = Path(args.output);out.mkdir(parents=True, exist_ok=True)
+    if out.resolve() == adapter.resolve(): raise SystemExit("Refusing to overwrite original adapter")
     merged.save_pretrained(out, safe_serialization=True, max_shard_size="2GB")
     tokenizer = AutoTokenizer.from_pretrained(BASE,trust_remote_code=False)
     tokenizer.save_pretrained(out)
     (out/"merge_provenance.json").write_text(json.dumps({
         "base_model": BASE, "adapter_sha256": manifest["adapter_sha256"],
         "status": "HF-merged-only-not-MLC-compiled-not-validated",
+        "training_steps": manifest["steps"],
+        "training_device": manifest["training_device"],
+        "expert_review_completed": False,
         "release_approved": False
     },ensure_ascii=False,indent=2),encoding="utf-8")
     print("Merged HF checkpoint saved:",out)
-    print("Next: MLC convert_weight / gen_config / compile webgpu, host artifacts; verify on iPhone.")
+    print("HF checkpoint ONLY; no MLC conversion, no iPhone test, no approval or deployment.")
 
 
 if __name__ == "__main__":
