@@ -38,6 +38,7 @@ COUNSELING_REFERENCE_JSON = Path(__file__).with_name("counseling_reference.json"
 LOCAL_WORKER_JS = Path(__file__).with_name("local-model-worker.js")
 CARE_GUARD_JS = Path(__file__).with_name("counseling-guard.js")
 INDEX = Path(__file__).with_name("index.html")
+V3_PREVIEW = Path(__file__).with_name("v3-preview.html")
 LOCK = threading.Lock()
 HITS = defaultdict(list)
 PROMPT = COUNSELOR_PROMPT
@@ -272,6 +273,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,LOGIN,"text/html; charset=utf-8") if p=="/" else self.send(401,{"error":"초대 코드가 필요합니다."})
         if p in ("/","/index.html"):
             return self.send(200,INDEX.read_bytes(),"text/html; charset=utf-8")
+        if p=="/v3-preview":
+            # Replayed, explicitly labeled synthetic assessment answers only;
+            # never allow an unsafe unvalidated V3 model to perform live counseling.
+            return self.send(200,V3_PREVIEW.read_bytes(),"text/html; charset=utf-8")
         if p=="/firebase-client.js":
             return self.send(200,FIREBASE_JS.read_bytes(),"text/javascript; charset=utf-8")
         if p=="/counseling_reference.json":
