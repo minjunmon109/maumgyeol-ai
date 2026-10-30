@@ -1,0 +1,51 @@
+name: Hybrid counseling offline model evaluation (NOT DEPLOY)
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Select one model; server model may exceed runner memory"
+        required: true
+        type: choice
+        options:
+          - baseline
+          - mobile
+          - server
+        default: mobile
+permissions:
+  contents: read
+jobs:
+  offline-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    env:
+      HF_HOME: ${{ runner.temp }}/hf-cache
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/hybrid-counseling-safety-20261030
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU inference dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install "transformers>=4.51,<5" accelerate safetensors
+      - name: Verify no deployment is possible from this workflow
+        run: |
+          test "${{ github.ref_name }}" = "experiment/hybrid-counseling-safety-20261030" || exit 1
+          test ! -e .github/workflows/deploy-hybrid.yml
+      - name: Run real CPU inference on synthetic Korean cases
+        run: |
+          python -u training/run_hybrid_candidates.py --model "${{ inputs.model }}" --output "hybrid-${{ inputs.model }}.jsonl"
+      - name: Save evidence (not clinical validation)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hybrid-${{ inputs.model }}-synthetic-responses-NOT-CLINICAL
+          path: hybrid-*.jsonl
+          if-no-files-found: warn
+          retention-days: 7
