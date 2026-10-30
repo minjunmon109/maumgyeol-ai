@@ -31,6 +31,9 @@ jobs:
           python -m py_compile training/kaggle_counseling_v3.py training/train_gpu_lora.py training/compare_gpu_lora.py training/audit_gpu_counseling_v3.py
           python -u training/test_counseling_v3.py
           python -u training/test_gpu_counseling_v3_audit.py
+          test -f training/dataset_license_manifest.json
+          test -f training/verify_training_license.py
+          python -u training/verify_training_license.py
       - name: Install official Kaggle CLI
         run: python -m pip -q install 'kaggle>=2.2.5'
       - name: Build pinned private NVIDIA T4 script with matching Kaggle handle
