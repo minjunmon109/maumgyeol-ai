@@ -9,7 +9,7 @@ concurrency:
 jobs:
   submit-private-kaggle-gpu:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 135
     env:
       KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
       KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
@@ -58,3 +58,51 @@ jobs:
           echo "Kaggle accepted the kernel submission; training status must be checked on Kaggle." >> "$GITHUB_STEP_SUMMARY"
           echo "Private kernel: https://www.kaggle.com/code/${KAGGLE_USERNAME}/maumgyeol-kmi-gpu-pilot" >> "$GITHUB_STEP_SUMMARY"
           echo "Kaggle may deny GPU if the account is not eligible or has no quota." >> "$GITHUB_STEP_SUMMARY"
+      - name: Track Kaggle training status until terminal result
+        env:
+          KERNEL_HANDLE: ${{ vars.KAGGLE_USERNAME }}/maumgyeol-kmi-gpu-pilot
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+          import time
+
+          handle = os.environ["KERNEL_HANDLE"]
+          if not handle or handle.startswith("/"):
+              sys.exit("Missing valid Kaggle kernel identifier")
+          for attempt in range(115):
+              cp = subprocess.run(
+                  ["kaggle", "kernels", "status", handle],
+                  text=True, capture_output=True
+              )
+              message = (cp.stdout + "\n" + cp.stderr).strip()
+              print(f"Status check {attempt + 1}: {message[:450]}", flush=True)
+              if cp.returncode == 0:
+                  normalized = message.lower()
+                  if re.search(r"\\b(complete|completed|success)\\b", normalized):
+                      print("Kaggle training finished; checking model files", flush=True)
+                      sys.exit(0)
+                  if re.search(r"\\b(error|failed|failure|cancelled|canceled)\\b", normalized):
+                      sys.exit("Kaggle GPU training failed; check private Kaggle kernel logs")
+              time.sleep(60)
+          sys.exit("Kaggle GPU training not complete within monitoring deadline")
+          PY
+      - name: Download private experimental model outputs
+        env:
+          KERNEL_HANDLE: ${{ vars.KAGGLE_USERNAME }}/maumgyeol-kmi-gpu-pilot
+        run: |
+          mkdir -p kaggle_result
+          kaggle kernels output "$KERNEL_HANDLE" -p kaggle_result -o
+          find kaggle_result -type f | head -40
+          find kaggle_result -name adapter_model.safetensors -type f | grep -q .
+          find kaggle_result -name training_manifest.json -type f | grep -q .
+      - name: Save model as PRIVATE GitHub Actions artifact (never deploy)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-kaggle-gpu-experimental-NOT-SAFETY-APPROVED
+          path: kaggle_result/
+          if-no-files-found: error
+          retention-days: 7
