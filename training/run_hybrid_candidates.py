@@ -21,7 +21,7 @@ def main():
  from transformers import AutoTokenizer,AutoModelForCausalLM
  import torch
  tokenizer=AutoTokenizer.from_pretrained(MODELS[args.model])
- model=AutoModelForCausalLM.from_pretrained(MODELS[args.model],torch_dtype="auto",device_map="auto").eval()
+ model=AutoModelForCausalLM.from_pretrained(MODELS[args.model],dtype="auto",device_map="auto").eval()
  cases=[json.loads(s) for s in Path(args.cases).read_text(encoding="utf-8").splitlines() if s.strip()]
  output=Path(args.output)
  if output.exists(): raise SystemExit("Refusing to overwrite existing outputs")
