@@ -1,5 +1,9 @@
 name: Maumgyeol free Kaggle GPU LoRA pilot (manual, NO DEPLOY)
 on:
+  push:
+    branches: [main]
+    paths:
+      - training/kaggle_gpu_pilot.py
   workflow_dispatch:
     inputs:
       kaggle_profile:
@@ -10,7 +14,7 @@ permissions:
   contents: read
 concurrency:
   group: maumgyeol-kaggle-gpu
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   submit-private-kaggle-gpu:
     runs-on: ubuntu-latest
@@ -87,15 +91,17 @@ jobs:
                   text=True, capture_output=True
               )
               message = (cp.stdout + "\n" + cp.stderr).strip()
-              print(f"Status check {attempt + 1}: {message[:450]}", flush=True)
-              if cp.returncode == 0:
-                  normalized = message.lower()
-                  if re.search(r"\\b(complete|completed|success)\\b", normalized):
-                      print("Kaggle training finished; checking model files", flush=True)
-                      sys.exit(0)
-                  if re.search(r"\\b(error|failed|failure|cancelled|canceled)\\b", normalized):
-                      sys.exit("Kaggle GPU training failed; check private Kaggle kernel logs")
-              time.sleep(60)
+              match = re.search("KernelWorkerStatus[.]([A-Z_]+)", message)
+              state = match.group(1) if match else "UNKNOWN"
+              print(f"Kaggle status check {attempt + 1}: {state}", flush=True)
+              if cp.returncode != 0 or state == "UNKNOWN":
+                  sys.exit("Cannot read Kaggle status; refusing to poll indefinitely")
+              if state == "COMPLETE":
+                  print("Kaggle GPU run complete; verifying model outputs", flush=True)
+                  sys.exit(0)
+              if state in {"ERROR", "CANCEL_REQUESTED", "CANCEL_ACKNOWLEDGED"}:
+                  sys.exit(f"Kaggle GPU run ended with {state}; inspect the private Kaggle Logs page")
+              time.sleep(30)
           sys.exit("Kaggle GPU training not complete within monitoring deadline")
           PY
       - name: Download private experimental model outputs
