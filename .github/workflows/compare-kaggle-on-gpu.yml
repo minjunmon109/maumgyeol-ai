@@ -1,0 +1,144 @@
+name: Maumgyeol private Kaggle T4 model comparison (NO DEPLOY)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/compare-kaggle-on-gpu.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: maumgyeol-gpu-evaluation
+  cancel-in-progress: true
+jobs:
+  compare-on-kaggle-t4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KAGGLE_USERNAME: huhuukgghhuu
+      KERNEL_HANDLE: huhuukgghhuu/maumgyeol-t4-lora-comparison
+      DATASET_HANDLE: huhuukgghhuu/maumgyeol-lora20-private-eval
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Kaggle auth and CLI
+        run: |
+          test -n "$KAGGLE_API_TOKEN" || (echo "Missing Kaggle API secret" && exit 1)
+          python -m pip -q install 'kaggle>=2.2.5'
+      - name: Fetch actual approved-for-test ONLY 20-step artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: maumgyeol-kaggle-gpu-experimental-NOT-SAFETY-APPROVED
+          github-token: ${{ github.token }}
+          run-id: 40996444103
+          path: gpu_model
+      - name: Validate artifact and prepare PRIVATE adapter-only Kaggle dataset
+        run: |
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          root=Path("gpu_model")
+          found=list(root.rglob("training_manifest.json"))
+          valid=[]
+          for x in found:
+              try:
+                  d=json.loads(x.read_text(encoding="utf-8"))
+                  if d.get("steps")==20 and d.get("training_device")=="cuda" and d.get("approved_for_release") is False and (x.parent/"adapter_model.safetensors").is_file():
+                      valid.append(x.parent)
+              except Exception:
+                  continue
+          if len(valid)!=1:
+              raise SystemExit("Cannot uniquely verify genuine 20-step experimental GPU LoRA")
+          dest=Path("private_dataset")
+          dest.mkdir(exist_ok=True)
+          for f in valid[0].iterdir():
+              if f.is_file() and f.name in {"adapter_model.safetensors","adapter_config.json","training_manifest.json","tokenizer_config.json","special_tokens_map.json"}:
+                  shutil.copy2(f,dest/f.name)
+          for name in ("adapter_model.safetensors","adapter_config.json","training_manifest.json"):
+              if not (dest/name).is_file():
+                  raise SystemExit("Missing "+name)
+          metadata={"id":"huhuukgghhuu/maumgyeol-lora20-private-eval",
+                    "title":"Maumgyeol Lora20 Private Eval",
+                    "licenses":[{"name":"CC-BY-4.0"}],
+                    "isPrivate":True}
+          (dest/"dataset-metadata.json").write_text(json.dumps(metadata,indent=2))
+          print("Verified LoRA artifact prepared for private Kaggle transfer")
+          PY
+      - name: Create or update PRIVATE Kaggle LoRA input dataset
+        shell: bash
+        run: |
+          if kaggle datasets metadata "$DATASET_HANDLE" -p /tmp 2>/dev/null; then
+            kaggle datasets version -p private_dataset -m 'Refresh private 20-step experimental adapter' -q
+          else
+            kaggle datasets create -p private_dataset -q
+          fi
+          echo "Private Kaggle input dataset updated; never public" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build private T4 GPU comparison script
+        run: |
+          mkdir -p eval_kernel
+          cp training/kaggle_gpu_compare.py eval_kernel/maumgyeol_eval.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          m={"id":"huhuukgghhuu/maumgyeol-t4-lora-comparison",
+             "title":"Maumgyeol T4 Lora Comparison",
+             "code_file":"maumgyeol_eval.py","language":"python",
+             "kernel_type":"script","is_private":True,
+             "enable_gpu":True,"enable_internet":True,
+             "machine_shape":"NvidiaTeslaT4",
+             "dataset_sources":["huhuukgghhuu/maumgyeol-lora20-private-eval"],
+             "competition_sources":[],"kernel_sources":[],"model_sources":[]}
+          Path("eval_kernel/kernel-metadata.json").write_text(json.dumps(m,indent=2))
+          PY
+      - name: Submit model comparison to Kaggle T4
+        run: |
+          kaggle kernels push -p eval_kernel --accelerator NvidiaTeslaT4 --timeout 3600
+      - name: Track Kaggle terminal state (fail fast on errors)
+        run: |
+          python - <<'PY'
+          import os,re,subprocess,time,sys
+          handle=os.environ["KERNEL_HANDLE"]
+          for i in range(105):
+              cp=subprocess.run(["kaggle","kernels","status",handle],capture_output=True,text=True,timeout=60)
+              m=re.search("KernelWorkerStatus[.]([A-Z_]+)",cp.stdout+"\n"+cp.stderr)
+              state=m.group(1) if m else "UNKNOWN"
+              print(f"Kaggle T4 eval check {i+1}: {state}",flush=True)
+              if cp.returncode!=0 or state=="UNKNOWN":
+                  sys.exit("Kaggle evaluation status could not be verified")
+              if state=="COMPLETE":
+                  sys.exit(0)
+              if state in {"ERROR","CANCEL_REQUESTED","CANCEL_ACKNOWLEDGED"}:
+                  sys.exit("Kaggle model comparison failed; check private Kaggle kernel logs")
+              time.sleep(30)
+          sys.exit("GPU evaluation timed out")
+          PY
+      - name: Retrieve and validate genuine GPU evaluation evidence
+        run: |
+          mkdir -p gpu_eval_results
+          kaggle kernels output "$KERNEL_HANDLE" -p gpu_eval_results -o
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files=list(Path("gpu_eval_results").rglob("comparison.json"))
+          if len(files)!=1:
+              raise SystemExit("Expected one GPU comparison report, found "+str(len(files)))
+          d=json.loads(files[0].read_text(encoding="utf-8"))
+          if d.get("deployment_approved") is not False or d.get("adapter_steps")!=20:
+              raise SystemExit("Evaluation provenance mismatch")
+          print("BASE_RESULTS="+json.dumps(d["base"],ensure_ascii=False))
+          print("GPU_LORA_RESULTS="+json.dumps(d["gpu_20step_lora"],ensure_ascii=False))
+          print("Clinical evaluation NOT performed. Do not deploy.")
+          PY
+      - name: Save private paired responses and comparison report
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-t4-base-vs-lora20-actual-replies
+          path: gpu_eval_results/
+          if-no-files-found: error
+          retention-days: 7
