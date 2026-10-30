@@ -1,0 +1,53 @@
+name: Fast existing-results comparison (NO DEPLOY)
+on:
+  push:
+    branches:
+      - experiment/hybrid-counseling-safety-20261030
+    paths:
+      - .github/workflows/fast-existing-comparison.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  compare-finished:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40981276676
+          github-token: ${{ github.token }}
+          pattern: hybrid-*-30cases
+          merge-multiple: true
+          path: evidence
+      - name: Safely compare only completed models without new inference
+        run: |
+          python - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,'training')
+          from hybrid_safety_eval import load,evaluate
+          available={}
+          for key in ('baseline','server','mobile'):
+              p=Path('evidence')/(key+'.jsonl')
+              if p.exists():
+                  rows=load(p)
+                  available[key]={'assessment':evaluate(rows),'case_ids':set(rows)}
+          if not available:
+              raise SystemExit('No completed model outputs found')
+          scores={k:{'passed':v['assessment']['passed'],'total':v['assessment']['total'],'critical_failures':v['assessment']['critical_failures']} for k,v in available.items()}
+          required=set(k for k in ('baseline','mobile','server'))
+          missing=sorted(required-set(available))
+          if len(available)>1 and len({frozenset(v['case_ids']) for v in available.values()})!=1:
+              raise SystemExit('Different case sets: no comparison possible')
+          result={'evaluation_type':'preliminary_automated_keyword_screen','scores':scores,'missing_models':missing,'comparison_complete':not missing,'expert_review':'NOT_DONE','iphone_device_test':'NOT_DONE','deployment_approved':False}
+          Path('preliminary-comparison.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+          print(json.dumps(result,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preliminary-comparison-NOT-APPROVED
+          path: preliminary-comparison.json
+          retention-days: 7
