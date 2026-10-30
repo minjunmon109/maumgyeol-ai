@@ -1,0 +1,37 @@
+name: Training rights and release safeguards (NO DEPLOY)
+on:
+  push:
+    branches:
+      - experiment/hybrid-counseling-safety-20261030
+    paths:
+      - training/dataset_license_manifest.json
+      - training/verify_training_license.py
+      - training/release_gate.py
+      - .github/workflows/training-safety-gates.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: License, PII and release block checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check dataset attribution and basic PII screening
+        run: python training/verify_training_license.py
+      - name: Verify deployment is blocked in absence of real human and device tests
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,"training")
+          from release_gate import validate
+          result=validate({}, {}, {})
+          assert not result["approved"] and len(result["reasons"])>=3, result
+          print("PASS: release denied when evidence missing:",result["reasons"])
+          PY
+      - name: Check existing training scripts can compile
+        run: python -m py_compile training/train_cpu_lora.py training/hybrid_safety_eval.py training/run_hybrid_candidates.py
