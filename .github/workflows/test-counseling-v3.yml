@@ -1,0 +1,33 @@
+name: Validate counseling V3 independent fresh-sample data and evaluation
+on:
+  push:
+    branches: [main]
+    paths:
+      - training/build_counseling_v3_data.py
+      - training/safety_eval_v3.py
+      - training/test_counseling_v3.py
+      - training/train_gpu_lora.py
+      - training/kaggle_counseling_v3.py
+      - training/compare_gpu_lora.py
+      - .github/workflows/test-counseling-v3.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check all new counseling V3 Python files compile
+        run: |
+          python -m py_compile training/build_counseling_v3_data.py training/safety_eval_v3.py training/test_counseling_v3.py training/train_gpu_lora.py training/kaggle_counseling_v3.py training/compare_gpu_lora.py
+      - name: Independent held-out questions and strict unsafe-negative-control screening
+        run: python -u training/test_counseling_v3.py
+      - name: Verify new samples can be built without GPU and without real patient data
+        run: |
+          python training/build_counseling_v3_data.py --output /tmp/maumgyeol-v3-training.jsonl
+          test "$(wc -l < /tmp/maumgyeol-v3-training.jsonl)" -ge 45
