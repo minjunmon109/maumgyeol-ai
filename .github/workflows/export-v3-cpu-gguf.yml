@@ -1,0 +1,112 @@
+name: Convert REAL V3 LoRA to CPU GGUF for on-device RAM (EXPERIMENT, NO DEPLOY)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/export-v3-cpu-gguf.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: maumgyeol-90step-CPU-GGUF-export
+  cancel-in-progress: false
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download exact PRIVATE 90-step V3 adapter (NOT baseline)
+        uses: actions/download-artifact@v4
+        with:
+          name: maumgyeol-v3-trained-90step-UNAPPROVED
+          run-id: "41008114152"
+          github-token: ${{ github.token }}
+          path: v3-private-adapter
+      - name: Verify real adapter fingerprint and legal release limits
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          matches=list(Path("v3-private-adapter").rglob("training_manifest.json"))
+          if len(matches)!=1:raise SystemExit("Expected exactly one trained adapter")
+          path=matches[0].parent.resolve()
+          with open("v3_adapter_path.txt","w") as f:f.write(str(path))
+          print("EXACT_PRIVATE_V3_ADAPTER_FOUND")
+          PY
+          python training/export_v3_cpu_gguf.py --verify-only --adapter "$(cat v3_adapter_path.txt)" --output ./cpu_v3 --llama-dir ./llama.cpp
+      - name: Install CPU-only model merge and GGUF conversion dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q 'torch==2.6.0' --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -q 'transformers>=4.51,<5' 'peft>=0.15,<0.23' 'accelerate>=1.4' 'safetensors>=0.5' 'sentencepiece' 'gguf>=0.15' 'protobuf'
+          python - <<'PY'
+          import torch,transformers,peft,gguf
+          print("CPU_CONVERSION_RUNTIME",torch.__version__,transformers.__version__,peft.__version__)
+          PY
+      - name: Fetch real llama.cpp converter and compile only CPU quantizer
+        run: |
+          git clone --depth 1 https://github.com/ggml-org/llama.cpp.git llama.cpp
+          git -C llama.cpp rev-parse HEAD > llama-cpp-commit.txt
+          cmake -S llama.cpp -B llama.cpp/build -DGGML_NATIVE=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DGGML_CUDA=OFF -DGGML_VULKAN=OFF
+          cmake --build llama.cpp/build --config Release -j 2 --target llama-quantize llama-cli
+      - name: Merge the identical LoRA weights and export compact Q4_K_M GGUF
+        run: |
+          python -u training/export_v3_cpu_gguf.py --adapter "$(cat v3_adapter_path.txt)" --output ./cpu_v3 --llama-dir ./llama.cpp
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          f=Path("cpu_v3/maumgyeol-v3-q4_k_m.gguf")
+          d=json.loads(Path("cpu_v3/cpu-gguf-provenance.json").read_text())
+          assert f.is_file() and f.stat().st_size>300000000
+          assert d["adapter_sha256"]=="71f40a7dee87f55b7fd948ce21b5842a6608f60a5f17f6319fd767004eeec565"
+          assert d["release_approved"] is False
+          print("EXACT_V3_CPU_MODEL_PRODUCED=true",f.stat().st_size)
+          PY
+      - name: Run actual GPU-free CPU inference smoke test with the converted V3 (not a clinical evaluation)
+        timeout-minutes: 8
+        run: |
+          timeout 180 ./llama.cpp/build/bin/llama-cli -m ./cpu_v3/maumgyeol-v3-q4_k_m.gguf -p '<|im_start|>system
+          너는 한국어 정서지원 AI다. 짧게 답해.
+          <|im_end|>
+          <|im_start|>user
+          안녕, 너는 누구야?
+          <|im_end|>
+          <|im_start|>assistant' -n 64 -c 512 -t 2 --temp 0 --no-display-prompt > cpu_v3/cpu-smoke-output.txt 2>&1
+          python - <<'PY'
+          from pathlib import Path
+          t=Path("cpu_v3/cpu-smoke-output.txt").read_text(errors="replace")
+          if len(t.strip())<15:raise SystemExit("Empty CPU model inference")
+          print("REAL_V3_CPU_INFERENCE_COMPLETED="+str(len(t)))
+          print("MODEL_HAS_NOT_PASSED_MENTAL_HEALTH_SAFETY=true")
+          PY
+      - name: Upload real quantized GGUF and model provenance privately (NOT safe for default site)
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-CPU-Q4_K_M-EXPERIMENTAL-NOT-APPROVED
+          path: |
+            cpu_v3/maumgyeol-v3-q4_k_m.gguf
+            cpu_v3/cpu-gguf-provenance.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload CPU smoke-test summary (no sensitive input)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-CPU-conversion-diagnostics
+          path: |
+            cpu_v3/cpu-gguf-provenance.json
+            llama-cpp-commit.txt
+          if-no-files-found: warn
+          retention-days: 7
