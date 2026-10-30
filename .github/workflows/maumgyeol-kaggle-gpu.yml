@@ -1,9 +1,10 @@
-name: Maumgyeol free Kaggle GPU LoRA pilot (manual, NO DEPLOY)
+name: Maumgyeol counseling v2 KMI plus synthetic T4 LoRA (NO DEPLOY)
 on:
   push:
     branches: [main]
     paths:
       - training/kaggle_gpu_pilot.py
+      - .github/workflows/maumgyeol-kaggle-gpu.yml
   workflow_dispatch:
     inputs:
       kaggle_profile:
@@ -48,11 +49,11 @@ jobs:
           if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", username):
               raise SystemExit("Kaggle display name is not the account username. Copy username from https://www.kaggle.com/<username> and supply it as the workflow input kaggle_profile.")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
-              print("KAGGLE_KERNEL_HANDLE=" + username + "/maumgyeol-kmi-gpu-pilot", file=env)
+              print("KAGGLE_KERNEL_HANDLE=" + username + "/maumgyeol-counseling-v2-gpu", file=env)
           print("Kaggle username format accepted", flush=True)
           metadata = {
             "id": f"{username}/maumgyeol-kmi-gpu-pilot",
-            "title": "Maumgyeol KMI GPU Pilot",
+            "title": "Maumgyeol Counseling Safety v2 GPU Experiment",
             "code_file": "maumgyeol_gpu.py",
             "language": "python",
             "kernel_type": "script",
@@ -115,7 +116,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: maumgyeol-kaggle-gpu-experimental-NOT-SAFETY-APPROVED
+          name: maumgyeol-counseling-v2-60steps-NOT-APPROVED
           path: kaggle_result/
           if-no-files-found: error
           retention-days: 7
