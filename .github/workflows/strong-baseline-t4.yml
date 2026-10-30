@@ -1,0 +1,93 @@
+name: Benchmark strong Qwen3-4B vs original Qwen2.5-1.5B on Kaggle T4 (PRIVATE NO DEPLOY)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/strong-baseline-t4.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maumgyeol-strong-baseline-t4
+  cancel-in-progress: true
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KERNEL_HANDLE: huhuukgghhuu/maumgyeol-strong-baseline-t4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate code and Kaggle authorization
+        run: |
+          python -m py_compile training/kaggle_strong_baseline.py training/safety_eval_v2.py
+          test -n "$KAGGLE_API_TOKEN" || (echo "Kaggle secret unavailable" && exit 1)
+          python -m pip -q install 'kaggle>=2.2.5'
+      - name: Build private GPU benchmark kernel
+        run: |
+          mkdir -p benchmark_kernel
+          cp training/kaggle_strong_baseline.py benchmark_kernel/strong_baseline.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          metadata={
+           "id":"huhuukgghhuu/maumgyeol-strong-baseline-t4",
+           "title":"Maumgyeol Strong Baseline T4",
+           "code_file":"strong_baseline.py",
+           "language":"python","kernel_type":"script",
+           "is_private":True,"enable_gpu":True,"enable_internet":True,
+           "machine_shape":"NvidiaTeslaT4",
+           "dataset_sources":[],"competition_sources":[],"kernel_sources":[],"model_sources":[]}
+          Path("benchmark_kernel/kernel-metadata.json").write_text(json.dumps(metadata,indent=2))
+          PY
+      - name: Submit private Qwen model benchmark to Kaggle GPU
+        run: |
+          kaggle kernels push -p benchmark_kernel --accelerator NvidiaTeslaT4 --timeout 5400
+      - name: Monitor Kaggle benchmark state, stop on ERROR
+        run: |
+          python - <<'PY'
+          import os,re,subprocess,sys,time
+          handle=os.environ["KERNEL_HANDLE"]
+          for attempt in range(155):
+              p=subprocess.run(["kaggle","kernels","status",handle],text=True,
+                               capture_output=True,timeout=50)
+              m=re.search("KernelWorkerStatus[.]([A-Z_]+)",p.stdout+"\n"+p.stderr)
+              state=m.group(1) if m else "UNKNOWN"
+              print("GPU BENCHMARK status "+str(attempt+1)+": "+state,flush=True)
+              if state=="COMPLETE":sys.exit(0)
+              if state in ("ERROR","CANCEL_ACKNOWLEDGED","CANCEL_REQUESTED"):
+                  sys.exit("Kaggle GPU benchmark failed; see private Kaggle Logs")
+              if p.returncode!=0 or state=="UNKNOWN":
+                  sys.exit("Invalid Kaggle status; refusing indefinite wait")
+              time.sleep(30)
+          sys.exit("Kaggle benchmark timed out")
+          PY
+      - name: Download and verify actual paired model outputs
+        run: |
+          mkdir -p benchmark_results
+          kaggle kernels output "$KERNEL_HANDLE" -p benchmark_results -o
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=list(Path("benchmark_results").rglob("strong_baseline_comparison.json"))
+          if len(path)!=1:raise SystemExit("Missing real paired model evaluation evidence")
+          data=json.loads(path[0].read_text(encoding="utf-8"))
+          if data.get("approved_for_deployment") is not False or not data.get("same_prompts"):
+              raise SystemExit("Invalid benchmark report provenance")
+          for name in ["qwen25_1p5b","qwen3_4b_2507"]:
+              print(name, {k:v for k,v in data["model_scores"][name].items() if k!="cases"},flush=True)
+          print("CAUTION: automatic tests are not clinical certification")
+          PY
+      - name: Save generated answers and scores privately in workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-strong-model-t4-benchmark-UNAPPROVED
+          path: benchmark_results/
+          if-no-files-found: error
+          retention-days: 7
