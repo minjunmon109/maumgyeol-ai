@@ -1,0 +1,72 @@
+name: Maumgyeol GPU LoRA pilot on machine.dev (NO DEPLOY)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maumgyeol-gpu-pilot
+  cancel-in-progress: false
+jobs:
+  gpu-pilot:
+    name: Isolated 20-step GPU LoRA experiment
+    runs-on: machine/id=${{ github.run_id }}/gpu=t4/tenancy=spot
+    timeout-minutes: 25
+    env:
+      TOKENIZERS_PARALLELISM: 'false'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/hybrid-counseling-safety-20261030
+          persist-credentials: false
+      - name: Verify real NVIDIA GPU
+        run: |
+          nvidia-smi
+          python -c "import platform; print('Architecture:', platform.machine())"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install GPU trainer
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cu124
+          python -m pip install 'transformers>=4.51,<5' peft accelerate safetensors
+          python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('CUDA device:', torch.cuda.get_device_name(0))"
+      - name: Verify approved data and validation split
+        run: |
+          python training/verify_training_license.py
+          python training/train_cpu_lora.py --train 'training/open_data/kmi_train_*.jsonl' --val training/open_data/kmi_val.jsonl --dry-run
+      - name: GPU LoRA train 20 steps with live step counters and checkpoints
+        run: |
+          python -u training/train_cpu_lora.py \
+            --device cuda \
+            --train 'training/open_data/kmi_train_*.jsonl' \
+            --val training/open_data/kmi_val.jsonl \
+            --max-steps 20 --max-length 128 \
+            --gradient-accumulation-steps 1 \
+            --max-training-examples 64 --max-eval-examples 8 \
+            --log-steps 1 --checkpoint-every 5 \
+            --output experimental-kmi-gpu-lora
+      - name: Assert trained adapter remains NOT approved for release
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out = Path('experimental-kmi-gpu-lora')
+          data = json.loads((out/'training_manifest.json').read_text())
+          assert data['training_device'] == 'cuda'
+          assert data['steps'] == 20
+          assert data['approved_for_release'] is False
+          assert data['clinician_reviewed'] is False
+          assert data['webllm_compatible_artifacts'] is False
+          assert (out/'adapter_model.safetensors').is_file()
+          print('EXPERIMENT COMPLETE: publication and deployment remain prohibited')
+          PY
+      - name: Save experimental GPU adapter or last checkpoint for review only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-kmi-gpu-EXPERIMENTAL-NO-DEPLOY
+          path: experimental-kmi-gpu-lora/
+          if-no-files-found: warn
+          retention-days: 7
