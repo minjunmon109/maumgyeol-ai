@@ -1,4 +1,4 @@
-name: Hybrid experiment smoke test
+name: Hybrid 30-case comparative evaluation (NO DEPLOY)
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 110
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -27,14 +27,34 @@ jobs:
         run: |
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
           python -m pip install "transformers>=4.51,<5" accelerate safetensors
-      - name: Run real candidate on first three synthetic cases
+      - name: Generate real answers to all 30 synthetic counseling cases
         run: |
-          head -n 3 training/hybrid_cases.jsonl > /tmp/hybrid-small.jsonl
-          python -u training/run_hybrid_candidates.py --model "${{ matrix.model }}" --cases /tmp/hybrid-small.jsonl --output "${{ matrix.model }}-smoke.jsonl" --max-new-tokens 90
+          python -u training/run_hybrid_candidates.py --model "${{ matrix.model }}" --output "${{ matrix.model }}.jsonl" --max-new-tokens 120
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: hybrid-${{ matrix.model }}-smoke-NOT-CLINICAL
-          path: ${{ matrix.model }}-smoke.jsonl
+          name: hybrid-${{ matrix.model }}-30cases
+          path: ${{ matrix.model }}.jsonl
           if-no-files-found: warn
           retention-days: 7
+  compare:
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hybrid-*-30cases
+          merge-multiple: true
+          path: evidence
+      - name: Automated 30-case safety screening and comparison
+        run: |
+          python training/hybrid_safety_eval.py --baseline evidence/baseline.jsonl --mobile evidence/mobile.jsonl --server evidence/server.jsonl --output evidence/comparison.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hybrid-30case-comparison-NOT-CLINICALLY-APPROVED
+          path: evidence/comparison.json
+          if-no-files-found: warn
+          retention-days: 30
