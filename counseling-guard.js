@@ -14,7 +14,7 @@ const R={
  affirm:/(그런\s*(장치|칩|기계)가\s*(있을\s*수|실제|존재)|그럴\s*수\s*있습니다|맞습니다.{0,25}(읽|도청|조종|감시)|확실히.{0,25}(읽|도청|조종|감시))/i,
  privacyQuestion:/(절대|100\\s*%|무조건|서버에|저장|삭제|비밀|외부로|공유).{0,30}(보장|약속|비밀|저장|안\\s*남|안\\s*하|않|남아|남지|공유|안전)|(?:개인정보|채팅기록|대화).{0,20}(저장|비밀|삭제|남|기록)/i,
  privacyPromise:/(서버에.{0,12}저장하지\\s*않|정보를.{0,15}공유하지\\s*않|대화는.{0,12}저장되지\\s*않|기록은.{0,12}남지\\s*않|누구에게도\\s*말하지\\s*않|기억하고.{0,12}저장하지\\s*않)/i,
- privacy:/(절대.{0,15}(저장.{0,8}않|비밀)|100\s*%.{0,10}(비밀|보장|안전)|완벽한\s*비밀|아무도\s*볼\s*수\s*없|무조건.{0,10}(비밀|저장되지))/i,
+ privacy:/(절대.{0,15}(저장.{0,8}않|비밀)|100\s*%.{0,10}(비밀|보장|안전)|완벽한\s*비밀|아무도\s*볼\s*수\s*없|무조건.{0,10}(비밀|저장되지)|서버에\s*저장하지\s*않겠|저장하거나\s*공유하지\s*않겠|정보는\s*항상\s*비공개)/i,
  medicine:/(약|복용량|처방약).{0,30}(두\s*배(?:로)?\s*(먹|복용|늘)|임의로\s*늘|더\s*드세요|끊으세요)|더\s*먹어도\s*됩니다/i,
  diagnosis:/(당신은|너는|확실히|분명히).{0,20}(조울증|양극성장애|우울증|조현병|ADHD).{0,9}(입니다|이에요|환자|확실)|(?:조울증|양극성장애|우울증|조현병|ADHD).{0,13}(확실|진단합니다)/i,
  isolationQuestion:/(너만\\s*(있으면|믿|필요)|다른\\s*사람.{0,14}필요\\s*없|가족.{0,14}필요\\s*없|친구.{0,14}필요\\s*없|아무도\\s*안\\s*만날)/i,
@@ -67,6 +67,9 @@ function riskForTurn(history){
 function preflight(history){
  const s=lastUser(history), c=riskForTurn(history);
  if(c.urgent)return {response:c.followup?("아직 위험한 상황이라면 지금은 혼자 감당하지 않는 것이 중요해요. 안전한 곳으로 이동하고 믿을 만한 사람에게 바로 연락해 주세요. 당장 위험하다면 112나 119에 즉시 연락하세요. 지금 곁에 있어줄 사람을 부를 수 있나요?"):M[c.type],safety:"urgent",skipModel:true,reason:c.type};
+ if(R.delusion.test(s))return {response:M.delusion,safety:"concern",skipModel:true,reason:"delusion-grounding"};
+ if(/(?:대화|비밀|기록|서버).{0,20}(?:절대|100%|저장|비밀|약속)|절대.{0,12}(?:비밀|저장)/.test(s)&&/(저장|비밀|서버|기록)/.test(s))
+  return {response:M.privacy,safety:"none",skipModel:true,reason:"privacy-honesty"};
  if(R.unknown.test(s)){
   const prev=(history||[]).filter(m=>m.role==="user").slice(0,-1);
   // Avoid inventing the missing concern if the user has only disclosed vague distress.
