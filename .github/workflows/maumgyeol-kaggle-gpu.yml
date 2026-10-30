@@ -65,8 +65,6 @@ jobs:
           echo "Private Kaggle kernel submitted; see your account for private execution logs." >> "$GITHUB_STEP_SUMMARY"
           echo "Kaggle may deny GPU if the account is not eligible or has no quota." >> "$GITHUB_STEP_SUMMARY"
       - name: Track Kaggle training status until terminal result
-        env:
-          KERNEL_HANDLE: ${{ env.KAGGLE_KERNEL_HANDLE }}
         run: |
           python - <<'PY'
           import os
@@ -75,7 +73,7 @@ jobs:
           import sys
           import time
 
-          handle = os.environ["KERNEL_HANDLE"]
+          handle = os.environ["KAGGLE_KERNEL_HANDLE"]
           if not handle or handle.startswith("/"):
               sys.exit("Missing valid Kaggle kernel identifier")
           for attempt in range(115):
@@ -96,11 +94,9 @@ jobs:
           sys.exit("Kaggle GPU training not complete within monitoring deadline")
           PY
       - name: Download private experimental model outputs
-        env:
-          KERNEL_HANDLE: ${{ env.KAGGLE_KERNEL_HANDLE }}
         run: |
           mkdir -p kaggle_result
-          kaggle kernels output "$KERNEL_HANDLE" -p kaggle_result -o
+          kaggle kernels output "$KAGGLE_KERNEL_HANDLE" -p kaggle_result -o
           find kaggle_result -type f | head -40
           find kaggle_result -name adapter_model.safetensors -type f | grep -q .
           find kaggle_result -name training_manifest.json -type f | grep -q .
