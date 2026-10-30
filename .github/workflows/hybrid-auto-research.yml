@@ -1,0 +1,72 @@
+name: Automatic hybrid counseling research (NO DEPLOY)
+on:
+  push:
+    branches:
+      - experiment/hybrid-counseling-safety-20261030
+    paths:
+      - training/hybrid_cases.jsonl
+      - training/run_hybrid_candidates.py
+      - training/hybrid_safety_eval.py
+      - .github/workflows/hybrid-auto-research.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hybrid-research-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  model-outputs:
+    name: Synthetic Korean responses - ${{ matrix.model }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [baseline, mobile, server]
+    env:
+      HF_HOME: ${{ runner.temp }}/hf-cache
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install "transformers>=4.51,<5" accelerate safetensors
+      - name: Real inference with public synthetic test prompts only
+        run: python -u training/run_hybrid_candidates.py --model "${{ matrix.model }}" --output "${{ matrix.model }}.jsonl"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hybrid-${{ matrix.model }}-NOT-CLINICAL
+          path: ${{ matrix.model }}.jsonl
+          if-no-files-found: warn
+          retention-days: 7
+  compare:
+    needs: model-outputs
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hybrid-*-NOT-CLINICAL
+          merge-multiple: true
+          path: evidence
+      - name: Run automated safety checks (not a human review)
+        run: |
+          python training/hybrid_safety_eval.py --baseline evidence/baseline.jsonl --mobile evidence/mobile.jsonl --server evidence/server.jsonl --output evidence/hybrid-evaluation.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hybrid-comparison-NOT-APPROVED
+          path: evidence/hybrid-evaluation.json
+          if-no-files-found: warn
+          retention-days: 7
