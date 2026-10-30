@@ -1231,7 +1231,7 @@ function addMessage(role,content,{pending=false,safety='none'}={}){
   }
   if(safety==='urgent'||safety==='concern'){
     const banner=element('div','safety-banner');banner.append(document.createTextNode('긴급한 위험이 있거나 안전이 걱정된다면 '));
-    const a=element('a','', '109 자살예방상담전화');a.href='tel:109';banner.append(a,document.createTextNode(' 또는 119에 연락하세요.'));wrapper.append(banner);
+    const a=element('a','', '112 긴급 신고');a.href='tel:112';banner.append(a,document.createTextNode(' 또는 119에 연락하세요. 자살 위험은 109 자살예방상담전화도 이용할 수 있습니다.'));wrapper.append(banner);
   }
   messageList.append(wrapper);scrollBottom();return {wrapper,bubble};
 }
