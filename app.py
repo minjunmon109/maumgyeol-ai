@@ -253,7 +253,16 @@ def report_upstream_error(exc):
             category = "unstructured_error"
     except (ValueError, TypeError, AttributeError, UnicodeError):
         category = "non_json_or_empty_response"
-    print("UPSTREAM_DIAGNOSTIC status=" + str(status) + " category=" + category + " error_type=" + error_type, flush=True)
+    # HTTP metadata only; never log response body, request messages or credentials.
+    headers = getattr(exc, "headers", None)
+    content_type = (headers.get("Content-Type", "") if headers else "").lower()
+    server = (headers.get("Server", "") if headers else "").lower()
+    via_cf = bool(headers and (headers.get("CF-Ray") or headers.get("CF-Mitigated")))
+    content_class = "html" if "html" in content_type else ("json" if "json" in content_type else "other")
+    server_class = "cloudflare" if "cloudflare" in server or via_cf else ("nginx" if "nginx" in server else "other")
+    print("UPSTREAM_DIAGNOSTIC status=" + str(status) + " category=" + category +
+          " error_type=" + error_type + " content_class=" + content_class +
+          " server_class=" + server_class + " cf_header=" + str(via_cf).lower(), flush=True)
     return category
 
 def upstream_detail(status, remote_code):
