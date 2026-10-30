@@ -1,4 +1,4 @@
-name: Fast existing-results comparison (NO DEPLOY)
+name: Fast three-model comparison from existing outputs (NO DEPLOY)
 on:
   push:
     branches:
