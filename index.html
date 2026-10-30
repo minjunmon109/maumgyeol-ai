@@ -353,12 +353,7 @@ body.focus-mode .rightbar{display:none}body.focus-mode .panes{grid-template-colu
 <div class="care-support"><span>도움이 급하게 필요할 때</span><p>자신이나 다른 사람의 안전이 위협받는다면 대화 서비스보다 가까운 사람과 응급 지원을 먼저 이용하세요. 긴급 신고 119·112, 자살예방상담전화 109</p></div>
 </section>
 <section id="aboutPanel" class="about-panel" hidden><div class="eyebrow">마음결을 소개합니다</div><h2>이야기가 잠시 쉬어갈 수 있도록.</h2><p>마음결은 경청과 감정 반영을 바탕으로 고민과 관계, 스트레스에 관해 함께 정리하는 심리상담 대화 공간입니다.</p><p>마음결은 자동 대화 서비스이며 실제 상담사나 의료전문가의 진단·치료·응급 대응을 대신하지 않습니다. 위급한 상황에서는 119 또는 자살예방상담전화 109로 연락해 주세요.</p></section>
-<div class="composer-area"><div class="composer-head"><span>지금 어떤 방식으로 함께할까요?</span><small id="readyText">당신의 속도로 이야기해요</small></div><div class="adaptive-mode" aria-label="상담 방식 자동 조절"><span class="adaptive-mark">✧</span><div><strong>마음결이 대화의 흐름에 맞춰 함께해요</strong><small>필요할 때는 들어주고, 마음을 정리하고, 방법을 함께 찾아요.</small></div><span class="adaptive-auto">자동</span></div><label id="externalConsentWrap" hidden style="display:none;align-items:flex-start;gap:8px;padding:10px 12px;margin:8px 0 5px;background:#f1f5ed;border-radius:9px;font-size:11px;line-height:1.7;color:#5b7356"><input id="externalConsent" type="checkbox" style="margin-top:3px;flex:0 0 auto" /><span>외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 모델 파일 다운로드나 별도 API 키는 필요하지 않습니다. 제공업체의 데이터 보존·학습 정책은 다를 수 있으며 비밀유지가 보장되지 않습니다. 개인정보·실제 상담 기록 등 민감한 내용은 입력하지 마세요.</span></label><section id="deviceAiPanel" class="device-ai-panel" aria-label="기기 내 생성형 AI 상태">
-  <div class="device-ai-header"><div><strong>✧ 기기에서 실행하는 생성형 AI</strong><small>Qwen2.5 1.5B Instruct · AI API 없음 · 사용량 한도 없음</small></div><span id="deviceAiState" role="status" aria-live="polite">시작 전</span></div>
-  <p id="deviceAiNotice">사이트에 접속하면 모델 다운로드와 준비가 자동으로 시작됩니다. 처음 한 번은 Wi-Fi와 충분한 저장 공간이 필요하며, 이후에는 브라우저 캐시를 활용합니다. 아이폰 Safari의 메모리 한도에 따라 실행되지 않을 수도 있습니다.</p>
-  <div class="device-ai-actions"><button type="button" id="deviceAiStart">자동 준비 중 · 재시도 가능</button><progress id="deviceAiProgress" max="1" value="0" hidden></progress></div>
-  <small class="device-ai-privacy">대화 생성은 기기 안에서 처리합니다. 한국어 대화 참고 예시는 KMI(2025, CC BY 4.0)의 합성 상담 자료를 사용합니다. 이는 추가 학습이나 임상 검증을 의미하지 않습니다. 모델 다운로드에 인터넷 연결이 필요합니다.</small>
-</section><form id="chatForm" class="composer"><label class="sr-only" for="messageBox">하고 싶은 이야기</label><textarea id="messageBox" rows="2" maxlength="2400" placeholder="무슨 일이 있었는지, 지금 어떤 마음인지 편하게 적어 주세요."></textarea><div class="composer-footer"><span>✧ &nbsp; 편하게 말씀해 주세요</span><button type="button" id="callButton" class="call-button" title="마음결과 음성 통화 시작" aria-label="마음결 음성 대화">☎ 통화</button><button type="button" id="micButton" class="mic-button" aria-label="음성으로 말하기" aria-pressed="false" title="마이크를 누르고 말하면 자동 전송됩니다">🎙 말하기</button><button type="button" id="voiceToggle" class="voice-toggle" aria-label="자동 음성 끄기" aria-pressed="true" title="답변을 자동으로 읽어줍니다">🔊 음성 켜짐</button><button type="submit" id="sendButton" title="메시지 보내기" aria-label="메시지 보내기">↑</button></div></form><details id="voiceDetails" class="voice-details"><summary>목소리 바꾸기 · 자연스럽게 읽기</summary><div class="voice-options"><label for="voiceChoice">한국어 목소리<select id="voiceChoice"><option value="auto">기기에서 가장 적합한 목소리</option></select></label><label for="voiceSpeed">말하기 속도 <output id="voiceSpeedValue">0.97배</output><input id="voiceSpeed" type="range" min="0.78" max="1.15" step="0.01" value="0.97"/></label><label for="voicePitch">목소리 높낮이 <output id="voicePitchValue">1.00</output><input id="voicePitch" type="range" min="0.83" max="1.16" step="0.01" value="1"/></label><div class="voice-settings-actions"><button id="voiceSample" type="button">미리 듣기</button><button id="voiceDifferent" type="button">다른 목소리 추천</button></div><p id="voiceAdvice">사용 가능한 한국어 음성은 iPhone의 설정과 설치된 음성에 따라 달라집니다.</p></div></details><p id="speechHint" class="speech-hint" role="status" aria-live="polite">마이크를 누르고 한국어로 말하면, 글자로 바뀌어 자동 전송됩니다. 음성 인식은 브라우저 서비스에서 처리될 수 있어요.</p><p class="disclaimer">마음결은 AI 기반 자동 대화 서비스이며 전문 심리상담사의 상담·진단·치료를 대신하지 않습니다. 기본 AI 답변은 기기 내 WebGPU에서 생성됩니다. 계정 기록 저장을 선택하면 Firebase에 대화가 저장될 수 있습니다. 저장 정책을 확인하고 민감정보 입력에 주의해 주세요.</p></div>
+<div class="composer-area"><div class="composer-head"><span>지금 어떤 방식으로 함께할까요?</span><small id="readyText">당신의 속도로 이야기해요</small></div><div class="adaptive-mode" aria-label="상담 방식 자동 조절"><span class="adaptive-mark">✧</span><div><strong>마음결이 대화의 흐름에 맞춰 함께해요</strong><small>필요할 때는 들어주고, 마음을 정리하고, 방법을 함께 찾아요.</small></div><span class="adaptive-auto">자동</span></div><label id="externalConsentWrap" hidden style="display:none;align-items:flex-start;gap:8px;padding:10px 12px;margin:8px 0 5px;background:#f1f5ed;border-radius:9px;font-size:11px;line-height:1.7;color:#5b7356"><input id="externalConsent" type="checkbox" style="margin-top:3px;flex:0 0 auto" /><span>외부 대화 처리 서비스(Kilo 및 연결된 모델 제공업체)에 대화 내용을 전송하는 데 동의합니다. 모델 파일 다운로드나 별도 API 키는 필요하지 않습니다. 제공업체의 데이터 보존·학습 정책은 다를 수 있으며 비밀유지가 보장되지 않습니다. 개인정보·실제 상담 기록 등 민감한 내용은 입력하지 마세요.</span></label><div id="deviceAiPanel" hidden aria-hidden="true" style="display:none!important"><span id="deviceAiState"></span><span id="deviceAiNotice"></span><button type="button" id="deviceAiStart" tabindex="-1" hidden></button><progress id="deviceAiProgress" max="1" value="0" hidden></progress></div><form id="chatForm" class="composer"><label class="sr-only" for="messageBox">하고 싶은 이야기</label><textarea id="messageBox" rows="2" maxlength="2400" placeholder="무슨 일이 있었는지, 지금 어떤 마음인지 편하게 적어 주세요."></textarea><div class="composer-footer"><span>✧ &nbsp; 편하게 말씀해 주세요</span><button type="button" id="callButton" class="call-button" title="마음결과 음성 통화 시작" aria-label="마음결 음성 대화">☎ 통화</button><button type="button" id="micButton" class="mic-button" aria-label="음성으로 말하기" aria-pressed="false" title="마이크를 누르고 말하면 자동 전송됩니다">🎙 말하기</button><button type="button" id="voiceToggle" class="voice-toggle" aria-label="자동 음성 끄기" aria-pressed="true" title="답변을 자동으로 읽어줍니다">🔊 음성 켜짐</button><button type="submit" id="sendButton" title="메시지 보내기" aria-label="메시지 보내기">↑</button></div></form><details id="voiceDetails" class="voice-details"><summary>목소리 바꾸기 · 자연스럽게 읽기</summary><div class="voice-options"><label for="voiceChoice">한국어 목소리<select id="voiceChoice"><option value="auto">기기에서 가장 적합한 목소리</option></select></label><label for="voiceSpeed">말하기 속도 <output id="voiceSpeedValue">0.97배</output><input id="voiceSpeed" type="range" min="0.78" max="1.15" step="0.01" value="0.97"/></label><label for="voicePitch">목소리 높낮이 <output id="voicePitchValue">1.00</output><input id="voicePitch" type="range" min="0.83" max="1.16" step="0.01" value="1"/></label><div class="voice-settings-actions"><button id="voiceSample" type="button">미리 듣기</button><button id="voiceDifferent" type="button">다른 목소리 추천</button></div><p id="voiceAdvice">사용 가능한 한국어 음성은 iPhone의 설정과 설치된 음성에 따라 달라집니다.</p></div></details><p id="speechHint" class="speech-hint" role="status" aria-live="polite">마이크를 누르고 한국어로 말하면, 글자로 바뀌어 자동 전송됩니다. 음성 인식은 브라우저 서비스에서 처리될 수 있어요.</p><p class="disclaimer">마음결은 AI 기반 자동 대화 서비스이며 전문 심리상담사의 상담·진단·치료를 대신하지 않습니다. 기본 AI 답변은 기기 내 WebGPU에서 생성됩니다. 계정 기록 저장을 선택하면 Firebase에 대화가 저장될 수 있습니다. 저장 정책을 확인하고 민감정보 입력에 주의해 주세요.</p></div>
 </main>
 <aside class="rightbar" aria-label="마음 돌봄"><div class="right-eyebrow">내 마음을 돌보는 시간 <span>✧</span></div><section class="breathing-panel"><div class="section-eyebrow">마음에 여유 한 모금</div><h2>조금 천천히,<br>숨을 쉬어볼까요?</h2><p>바쁜 생각은 잠깐 내려두고<br>호흡에 가만히 머물러요.</p><div class="breath-ring" id="breathRing" aria-live="polite"><div id="breathText">♧<br><span>들이쉬고, 내쉬고</span></div></div><small id="breathLegend">들이쉬기 4초 &nbsp;|&nbsp; 멈추기 4초 &nbsp;|&nbsp; 내쉬기 6초</small><button class="breath-button" id="breathButton">1분 호흡 시작하기 <span>→</span></button><small class="breath-note">불편하면 자연스럽게 호흡해도 좋아요.</small></section>
 <section class="mood-panel"><div class="mood-head">지금의 마음은? <small>나를 위한 작은 체크인</small></div><div class="mood-options" id="moodOptions"><button data-mood="힘들어요" aria-label="힘들어요"><span>☹</span><small>힘들어요</small></button><button data-mood="지쳤어요" aria-label="지쳤어요"><span>⌢</span><small>지쳤어요</small></button><button data-mood="그저 그래요" aria-label="그저 그래요"><span>−</span><small>그저 그래요</small></button><button data-mood="괜찮아요" aria-label="괜찮아요"><span>⌣</span><small>괜찮아요</small></button><button data-mood="좋아요" aria-label="좋아요"><span>☺</span><small>좋아요</small></button></div><div class="mood-caption" id="moodCaption">어떤 기분이어도, 괜찮아요.</div></section>
@@ -383,11 +378,15 @@ const localAI=(()=>{
   const notice=document.getElementById("deviceAiNotice");
   const progress=document.getElementById("deviceAiProgress");
   const start=document.getElementById("deviceAiStart");
+  // AI weights initialize and cache automatically. Never surface the download
+  // panel, model filenames, percentage, or installation progress to visitors.
   function setState(label,description,ok=false){
     state.textContent=label;
     if(description)notice.textContent=description;
-    document.getElementById("status").textContent=ok?"● 기기 AI 사용 가능":"● "+label;
-    document.getElementById("status").className="status "+(ok?"online":"offline");
+    const status=document.getElementById("status");
+    const error=/실패|불가|오류|확인 필요/.test(label);
+    status.textContent=ok?"● 대화 가능":error?"● AI 연결 확인 필요":"● 마음결";
+    status.className="status "+(ok?"online":"offline");
   }
   function clean(text){
     return String(text||"").replace(/<think>[\s\S]*?<\/think>/gi,"").replace(/<think>[\s\S]*$/gi,"")
@@ -478,8 +477,8 @@ const localAI=(()=>{
       engine=await mod.CreateWebWorkerMLCEngine(worker,selectedModel,{
         initProgressCallback(p){
           if(typeof p.progress==="number"&&Number.isFinite(p.progress))progress.value=Math.min(1,Math.max(0,p.progress));
-          if(typeof p.text==="string"&&p.text.trim())notice.textContent=p.text.slice(0,260);
-          state.textContent="모델 준비 "+Math.round(progress.value*100)+"%";
+          // Internal progress only; no downloading text is rendered.
+          // Hidden progress stays available for diagnostics but never appears in UI.
         },...config
       },{context_window_size:1792,prefill_chunk_size:64});
       progress.hidden=true;start.textContent="기기 AI 준비 완료";start.disabled=true;
@@ -535,7 +534,7 @@ const localAI=(()=>{
   // has painted. WebLLM reuses browser cache on repeat visits.
   function autoInstall(){
     if(!window.isSecureContext||!navigator.gpu)return;
-    start.textContent="자동 설치 · 준비 진행 중";
+    // No visible installation control; load silently after page load.
     startModel().catch(()=>{});
   }
   if(document.readyState==="complete")setTimeout(autoInstall,450);
@@ -545,7 +544,7 @@ const localAI=(()=>{
   }else{
     const interrupted=(()=>{try{return sessionStorage.getItem(CRASH_MARKER)==="1"}catch{return false}})();
     try{sessionStorage.removeItem(CRASH_MARKER)}catch{}
-    setState("모델 다운로드 전",interrupted
+    setState("대화 준비 중",interrupted
       ?"이전 답변 생성 중 Safari가 다시 시작됐을 수 있습니다. 새 모델이 자동으로 준비됩니다. 계속 종료되면 Safari에서 직접 열어주세요."
       :"사이트에 접속하면 Qwen2.5 1.5B 모델을 자동으로 설치합니다. 처음에는 모델 파일을 내려받아야 하며 이후에는 캐시를 사용합니다.");
   }
