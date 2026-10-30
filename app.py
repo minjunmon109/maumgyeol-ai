@@ -13,16 +13,15 @@ from conversation_logic import conversation_instruction, effective_mode, normali
 PORT = int(os.getenv("PORT", "10000"))
 ACCESS_CODE = os.environ["ACCESS_CODE"]
 AUTH_SECRET = os.environ["AUTH_SECRET"]
-# All chat inference runs in the visitor's browser using WebGPU/WebLLM.
-# No hosted free AI API is called by default. Custom private backends remain
-# opt-in for advanced deployments; the default client never contacts them.
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "browser").strip()
-MODEL_URL = os.getenv("MODEL_URL", "").strip()
+# Historical Kilo-hosted mode: user messages require explicit external_consent.
+# Existing V3-on-device files stay separate and unmodified.
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai").strip()
+MODEL_URL = os.getenv("MODEL_URL", "https://ai-gateway.kilo.ai/api/v1/chat/completions").strip()
 MODEL_API_KEY = os.getenv("MODEL_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC").strip()
-KEYLESS_BACKEND = False
+MODEL_NAME = os.getenv("MODEL_NAME", "poolside/laguna-s-2.1:free").strip()
+KEYLESS_BACKEND = (MODEL_URL in ("https://api.kilo.ai/api/gateway/chat/completions", "https://ai-gateway.kilo.ai/api/v1/chat/completions") and not MODEL_API_KEY and MODEL_NAME.endswith(":free"))
 FREE_EXTERNAL = bool(MODEL_URL and urlsplit(MODEL_URL).hostname not in ("localhost","127.0.0.1","::1",None))
-MODEL_SOURCE = "browser" if not MODEL_URL else ("ollama" if MODEL_PROVIDER == "ollama" else "custom")
+MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("ollama" if MODEL_PROVIDER == "ollama" else "custom")
 
 MODEL_PROBE_STATUS = "ok" if MODEL_URL else "not_configured"
 FREE_MODEL_COOLDOWN_UNTIL = 0.0
