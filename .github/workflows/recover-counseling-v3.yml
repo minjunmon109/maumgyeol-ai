@@ -1,0 +1,116 @@
+name: Recover completed V3 GPU artifacts and verify real counseling safety (NO DEPLOY)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/recover-counseling-v3.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: recover-v3-gpu-outputs
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      HANDLE: huhuukgghhuu/maumgyeol-counseling-v3-gpu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm dataset and evaluator code
+        run: |
+          python -u training/test_counseling_v3.py
+          python -u training/test_gpu_counseling_v3_audit.py
+          test -n "$KAGGLE_API_TOKEN"
+      - name: Install Kaggle
+        run: python -m pip -q install 'kaggle>=2.2.5'
+      - name: Download existing successful Kaggle V3 output without retraining
+        run: |
+          mkdir -p raw_v3
+          kaggle kernels status "$HANDLE"
+          kaggle kernels output "$HANDLE" -p raw_v3 -o > /tmp/kaggle-v3-output-fetch.log 2>&1 || (tail -40 /tmp/kaggle-v3-output-fetch.log; exit 1)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("raw_v3/maumgyeol-counseling-v3-NOT-APPROVED")
+          assert root.is_dir(), "Kaggle experimental model output missing"
+          required=[
+            "training_manifest.json","adapter_model.safetensors",
+            "EXPERIMENT_NOTES.json",
+            "fresh_v3/comparison.json","fresh_v3/base_replies.json","fresh_v3/lora_replies.json",
+            "regression_v2/comparison.json","regression_v2/base_replies.json","regression_v2/lora_replies.json"
+          ]
+          missing=[x for x in required if not (root/x).is_file()]
+          assert not missing, "Missing actual training/evaluation evidence: "+str(missing)
+          manifest=json.loads((root/"training_manifest.json").read_text(encoding="utf-8"))
+          assert manifest.get("steps")==90 and manifest.get("approved_for_release") is False
+          print("RECOVERED_ACTUAL_GPU_STEPS=90")
+          print("RECOVERED_TWO_EVAL_SETS=36 unique prompts, 72 generated model replies")
+          print("RECOVERY_REQUIRES_NO_GPU_RETRAINING=True")
+          PY
+      - name: Audit model hash and recompute actual scores on independent V3/V2 holdouts
+        run: |
+          python -u training/audit_gpu_counseling_v3.py --artifact raw_v3 --output audited_v3
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads(Path("audited_v3/verified_result.json").read_text(encoding="utf-8"))
+          out=["## V3 GPU 90-step training and real model answers recovered",
+               "No GPU retraining required. This is automated screening, NOT clinical approval."]
+          for name,s in d["benchmarks"].items():
+              b=s["baseline"];v=s["candidate"]
+              out.append(f"- {name}: baseline {b['passed']}/{b['total']} vs V3 {v['passed']}/{v['total']}")
+              out.append(f"- {name} CRITICAL safety failure flags: baseline {b['critical_failures']} vs V3 {v['critical_failures']}")
+          out.append("- All critical heuristic gates pass: "+str(d["all_critical_heuristic_checks_passed"]))
+          out.append("- Independent professional review: NOT COMPLETED")
+          out.append("- iPhone WebLLM conversion/device validation: NOT COMPLETED")
+          out.append("- Deployment approved: FALSE")
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("\n".join(out)+"\n",encoding="utf-8")
+          print("V3_SUMMARY="+json.dumps(d["benchmarks"],ensure_ascii=False))
+          print("V3_RELEASE_APPROVED=False")
+          PY
+      - name: Upload final experiment weights only (exclude duplicate intermediate checkpoints)
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-trained-90step-UNAPPROVED
+          path: |
+            raw_v3/maumgyeol-counseling-v3-NOT-APPROVED/adapter_config.json
+            raw_v3/maumgyeol-counseling-v3-NOT-APPROVED/adapter_model.safetensors
+            raw_v3/maumgyeol-counseling-v3-NOT-APPROVED/training_manifest.json
+            raw_v3/maumgyeol-counseling-v3-NOT-APPROVED/EXPERIMENT_NOTES.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload real generated answers and both independent safety audits
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-36case-real-safety-results
+          path: |
+            audited_v3/verified_result.json
+            raw_v3/maumgyeol-counseling-v3-NOT-APPROVED/fresh_v3/*.json
+            raw_v3/maumgyeol-counseling-v3-NOT-APPROVED/regression_v2/*.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload double-blind mental health professional review package
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-blind-expert-review-NOT-GRADED
+          path: |
+            audited_v3/blind_review/blind_pairs.json
+            audited_v3/blind_review/review_form.csv
+            audited_v3/blind_review/INSTRUCTIONS_KO.txt
+          if-no-files-found: error
+          retention-days: 14
+      - name: Keep private answer key separate
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-PRIVATE-blind-answer-key
+          path: audited_v3/blind_review/PRIVATE_answer_key.json
+          if-no-files-found: error
+          retention-days: 14
