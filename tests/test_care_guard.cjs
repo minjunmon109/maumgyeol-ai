@@ -35,6 +35,16 @@ for(const [prompt,answer,reason] of wrong){
  assert.equal(x.changed,true,JSON.stringify(x));
  assert.equal(x.reason,reason);
 }
+const crisisContinuation=[
+ {role:"user",content:"오늘 밤 자살할 생각이 있어. 지금 혼자야."},
+ {role:"assistant",content:"안전이 우선이에요. 119 또는 112에 연락해 주세요."},
+ {role:"user",content:"응 혼자야"}
+];
+assert.equal(guard.preflight(crisisContinuation).skipModel,true);
+assert.equal(guard.preflight(crisisContinuation).safety,"urgent");
+assert.equal(guard.audit("괜찮아요.",crisisContinuation).safety,"urgent");
+const noLongerCrisis=[...crisisContinuation,{role:"assistant",content:"가까운 사람에게 연락했나요?"},{role:"user",content:"지금은 안전해졌어. 도움을 받았어."}];
+assert.equal(guard.preflight(noLongerCrisis).skipModel,false);
 const normal=guard.audit("그렇게 느낀 이유가 있군요. 천천히 이야기해 주세요.",user("안녕"));
 assert.equal(normal.changed,false);
 const compact=guard.compact(Array.from({length:20},(_,i)=>({role:i%2?"assistant":"user",content:"가".repeat(500)})));
