@@ -44,9 +44,26 @@ function classify(text){
  return {type:"none",urgent:false};
 }
 function lastUser(history){return [...(history||[])].reverse().find(m=>m&&m.role==="user")?.content||"";}
+function riskForTurn(history){
+ const current=lastUser(history),direct=classify(current);
+ if(direct.urgent)return direct;
+ // A high-risk conversation does not become safe simply because the next
+ // message is "I'm alone" or "I cannot call". Recent context matters.
+ if(/안전해졌|지금은 안전|도움(을)? 받았|119에 연락했|112에 신고했|이제 괜찮아졌/.test(current))
+   return {type:"none",urgent:false};
+ if(/^(?:응|네|아직|혼자|못|두려|무서|살려|어떡|어떻게|전화|연락|계속|지금|위험|그래|괜찮).{0,65}$/i.test(current.trim())){
+   const earlier=(history||[]).filter(m=>m&&m.role==="user").slice(-3,-1);
+   for(let i=earlier.length-1;i>=0;i--){
+     const prior=classify(earlier[i].content);
+     if(prior.urgent)return {...prior,followup:true};
+   }
+ }
+ return direct;
+}
+
 function preflight(history){
- const s=lastUser(history), c=classify(s);
- if(c.urgent)return {response:M[c.type],safety:"urgent",skipModel:true,reason:c.type};
+ const s=lastUser(history), c=riskForTurn(history);
+ if(c.urgent)return {response:c.followup?("아직 위험한 상황이라면 지금은 혼자 감당하지 않는 것이 중요해요. 안전한 곳으로 이동하고 믿을 만한 사람에게 바로 연락해 주세요. 당장 위험하다면 112나 119에 즉시 연락하세요. 지금 곁에 있어줄 사람을 부를 수 있나요?"):M[c.type],safety:"urgent",skipModel:true,reason:c.type};
  if(R.unknown.test(s)){
   const prev=(history||[]).filter(m=>m.role==="user").slice(0,-1);
   // Avoid inventing the missing concern if the user has only disclosed vague distress.
@@ -56,8 +73,8 @@ function preflight(history){
  return {response:null,safety:"none",skipModel:false,reason:"model"};
 }
 function audit(answer,history){
- const s=String(answer||"").trim(),last=lastUser(history),c=classify(last);
- if(c.urgent)return {response:M[c.type],safety:"urgent",changed:true,reason:"crisis"};
+ const s=String(answer||"").trim(),last=lastUser(history),c=riskForTurn(history);
+ if(c.urgent)return {response:c.followup?("안전이 우선이에요. 위험한 상황에서 떨어져 가까운 사람에게 지금 도움을 요청해 주세요. 당장 위험하다면 112나 119로 연락하세요."):M[c.type],safety:"urgent",changed:true,reason:"crisis"};
  if(s.length<4)return {response:M.fallback,safety:"none",changed:true,reason:"empty"};
  if(R.permission.test(s))return {response:M.fallback,safety:"none",changed:true,reason:"permission"};
  if(R.delusion.test(last)&&R.affirm.test(s))return {response:M.delusion,safety:"concern",changed:true,reason:"delusion"};
