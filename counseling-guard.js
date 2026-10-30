@@ -89,7 +89,7 @@ function audit(answer,history){
  if(R.delusion.test(last)&&R.affirm.test(s))return {response:M.delusion,safety:"concern",changed:true,reason:"delusion"};
  if(R.privacy.test(s)||R.privacyPromise.test(s)||R.privacyQuestion.test(last))return {response:M.privacy,safety:"none",changed:true,reason:"privacy"};
  if(R.medicine.test(s)||R.diagnosis.test(s))return {response:M.medical,safety:"none",changed:true,reason:"medical"};
- if(R.dependence.test(s)|| (R.isolationQuestion.test(last)&&!/(다른\s*사람|친구|가족|전문가|연결|관계)/.test(s)))return {response:M.dependence,safety:"none",changed:true,reason:"dependency"};
+ if(R.dependence.test(s)||R.isolationQuestion.test(last))return {response:M.dependence,safety:"none",changed:true,reason:"dependency"};
  if(R.unknown.test(last)&&/(알고\s*있|분명히|당연히)/.test(s))return {response:M.unknown,safety:"none",changed:true,reason:"fabrication"};
  if(R.noAdvice.test(last)&&/(해야\s*합니다|추천합니다|해결책|먼저\s*해\s*보)/.test(s))
   return {response:M.listen,safety:"none",changed:true,reason:"unwanted-advice"};
