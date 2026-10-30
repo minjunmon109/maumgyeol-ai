@@ -8,6 +8,8 @@ on:
       - training/test_counseling_v3.py
       - training/train_gpu_lora.py
       - training/kaggle_counseling_v3.py
+      - training/verify_training_license.py
+      - training/dataset_license_manifest.json
       - training/compare_gpu_lora.py
       - training/audit_gpu_counseling_v3.py
       - training/test_gpu_counseling_v3_audit.py
@@ -27,6 +29,8 @@ jobs:
       - name: Check all new counseling V3 Python files compile
         run: |
           python -m py_compile training/build_counseling_v3_data.py training/safety_eval_v3.py training/test_counseling_v3.py training/train_gpu_lora.py training/kaggle_counseling_v3.py training/compare_gpu_lora.py training/audit_gpu_counseling_v3.py training/test_gpu_counseling_v3_audit.py
+      - name: Verify provenance rights manifest and screen provided KMI training files
+        run: python -u training/verify_training_license.py
       - name: Independent held-out questions and strict unsafe-negative-control screening
         run: python -u training/test_counseling_v3.py
       - name: Verify artifact integrity audits and failing safety gates
