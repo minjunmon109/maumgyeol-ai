@@ -785,9 +785,9 @@ const signatureTools=(()=>{
       "사용자의 연습 상황: "+practiceScenario.slice(0,450)+
       ". 상대방이 실제로 할 법한 말로 답하세요. 모욕과 위협은 피하고, 위험 상황에서는 안전을 우선합니다.";
     try{
-      const answer=await localAI.complete(practiceHistory,(partial)=>{
-        pending.querySelector("span").textContent=partial;
-      },role);
+      const check=window.MaumgyeolCareGuard.preflight(practiceHistory);
+      const raw=check.skipModel?check.response:await localAI.complete(practiceHistory,()=>{},role);
+      const answer=window.MaumgyeolCareGuard.audit(raw,practiceHistory).response;
       pending.querySelector("span").textContent=answer;
       practiceHistory.push({role:"assistant",content:answer});
       $feature("practiceReflect").disabled=false;
