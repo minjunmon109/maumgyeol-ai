@@ -60,7 +60,7 @@ if len(kmi) < 64 or len(synthetic) < 30:
 # Controlled mix: 64 licensed KMI train examples + 2x 39 unreviewed synthetic examples.
 mixed = kmi[:64] + synthetic * 2
 random.Random(42).shuffle(mixed)
-MIX.write_text("".join(json.dumps(x,ensure_ascii=False)+"\\n" for x in mixed),encoding="utf-8")
+MIX.write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in mixed),encoding="utf-8")
 print(json.dumps({"event":"training_mix","kmi":64,"synthetic_unique":len(synthetic),
                   "synthetic_repeated":2,"total":len(mixed),
                   "synthetic_expert_reviewed":False}),flush=True)
