@@ -1,0 +1,128 @@
+name: Maumgyeol V3 fresh-crisis-redteam Kaggle T4 GPU experiment (NO DEPLOY)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/maumgyeol-kaggle-v3.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maumgyeol-kaggle-v3-private-gpu
+  cancel-in-progress: false
+jobs:
+  train-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 135
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KAGGLE_USERNAME: huhuukgghhuu
+      KERNEL_HANDLE: huhuukgghhuu/maumgyeol-counseling-v3-gpu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fail closed on missing Kaggle authorization
+        run: |
+          test -n "$KAGGLE_API_TOKEN" || (echo "::error::Missing existing KAGGLE_API_TOKEN repository secret" && exit 1)
+          python -m py_compile training/kaggle_counseling_v3.py training/train_gpu_lora.py training/compare_gpu_lora.py training/audit_gpu_counseling_v3.py
+          python -u training/test_counseling_v3.py
+          python -u training/test_gpu_counseling_v3_audit.py
+      - name: Install official Kaggle CLI
+        run: python -m pip -q install 'kaggle>=2.2.5'
+      - name: Build pinned private NVIDIA T4 script with matching Kaggle handle
+        run: |
+          mkdir -p kaggle_v3
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          src=Path("training/kaggle_counseling_v3.py").read_text(encoding="utf-8")
+          key='SOURCE_COMMIT="__SOURCE_COMMIT__"'
+          if src.count(key)!=1:raise SystemExit("Unexpected source commit placeholder")
+          src=src.replace(key,'SOURCE_COMMIT="'+os.environ["GITHUB_SHA"]+'"')
+          Path("kaggle_v3/maumgyeol_v3.py").write_text(src,encoding="utf-8")
+          meta={"id":"huhuukgghhuu/maumgyeol-counseling-v3-gpu",
+                "title":"Maumgyeol Counseling V3 GPU",
+                "code_file":"maumgyeol_v3.py","language":"python",
+                "kernel_type":"script","is_private":True,"enable_gpu":True,
+                "enable_internet":True,"machine_shape":"NvidiaTeslaT4",
+                "dataset_sources":[],"competition_sources":[],
+                "kernel_sources":[],"model_sources":[]}
+          Path("kaggle_v3/kernel-metadata.json").write_text(json.dumps(meta,indent=2))
+          print("PRIVATE_V3_DATA_AND_HOLDOUT_VERIFIED, commit="+os.environ["GITHUB_SHA"][:12])
+          PY
+      - name: Run V3 90-step training plus NEW V3 and OLD V2 independent model answers on T4
+        run: |
+          kaggle kernels push -p kaggle_v3 --accelerator NvidiaTeslaT4 --timeout 7200
+      - name: Poll Kaggle until actually finished or failed
+        run: |
+          python - <<'PY'
+          import os,re,subprocess,sys,time
+          handle=os.environ["KERNEL_HANDLE"]
+          for i in range(235):
+              p=subprocess.run(["kaggle","kernels","status",handle],capture_output=True,text=True,timeout=50)
+              found=re.search(r"KernelWorkerStatus[.]([A-Z_]+)",p.stdout+"\n"+p.stderr)
+              state=found.group(1) if found else "UNKNOWN"
+              print(f"KAGGLE_V3_STATE {i+1}: {state}",flush=True)
+              if state=="COMPLETE":sys.exit(0)
+              if p.returncode or state in ("UNKNOWN","ERROR","CANCEL_REQUESTED","CANCEL_ACKNOWLEDGED"):
+                  sys.exit("Kaggle training/validation failed: inspect private Kaggle Logs")
+              time.sleep(30)
+          sys.exit("Kaggle V3 exceeded monitoring deadline")
+          PY
+      - name: Obtain actual model weights and all 72 held-out generated answers
+        run: |
+          mkdir -p gpu_v3_results
+          kaggle kernels output "$KERNEL_HANDLE" -p gpu_v3_results -o
+          test "$(find gpu_v3_results -name training_manifest.json | wc -l)" -eq 1
+          test "$(find gpu_v3_results -name adapter_model.safetensors | wc -l)" -eq 1
+          test "$(find gpu_v3_results -name comparison.json | wc -l)" -eq 2
+      - name: Recalculate safety flags and verify training integrity independently
+        run: |
+          python -u training/audit_gpu_counseling_v3.py --artifact gpu_v3_results --output verified_v3
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads(Path("verified_v3/verified_result.json").read_text(encoding="utf-8"))
+          lines=[
+            "## Maumgyeol V3 — experimental, never auto-deployed",
+            "- Actual CUDA training optimizer steps: "+str(d["training_steps"]),
+            "- Independent new Korean counseling cases: "+str(d["fresh_holdout_cases"]),
+            "- Previous test regression cases: "+str(d["old_holdout_cases"]),
+          ]
+          for name,values in d["benchmarks"].items():
+              base=values["baseline"];candidate=values["candidate"]
+              lines.append("- "+name+" (base vs V3): "+str(base["passed"])+"/"+str(base["total"])+" vs "+str(candidate["passed"])+"/"+str(candidate["total"]))
+              lines.append("- "+name+" critical failure cases (base vs V3): "+str(base["critical_failures"])+" vs "+str(candidate["critical_failures"]))
+          lines.append("- Zero critical failures across BOTH sets: "+str(d["all_critical_heuristic_checks_passed"]))
+          lines.append("- Human expert reviewed: FALSE. Clinical safety proven: FALSE. Automatic site deployment: BLOCKED.")
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as f:f.write("\n".join(lines)+"\n")
+          PY
+      - name: Save experimental model and actual dialogue outputs privately (7 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-90steps-private-NOT-APPROVED
+          path: gpu_v3_results/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Save blind counselor review evaluation results privately
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-22case-blind-review-UNAPPROVED
+          path: |
+            verified_v3/verified_result.json
+            verified_v3/blind_review/blind_pairs.json
+            verified_v3/blind_review/review_form.csv
+            verified_v3/blind_review/INSTRUCTIONS_KO.txt
+          retention-days: 7
+          if-no-files-found: error
+      - name: Save private answer key separately for after human grading
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v3-review-answer-key-PRIVATE
+          path: verified_v3/blind_review/PRIVATE_answer_key.json
+          retention-days: 7
+          if-no-files-found: error
