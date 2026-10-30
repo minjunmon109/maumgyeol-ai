@@ -7,6 +7,8 @@ on:
       - training/safety_eval_v2.py
       - training/compare_gpu_lora.py
       - training/test_counseling_v2.py
+      - training/blind_counseling_review.py
+      - training/test_blind_review.py
       - .github/workflows/test-counseling-v2.yml
   workflow_dispatch:
 permissions:
@@ -21,6 +23,8 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile all safety and training additions
-        run: python -m py_compile training/build_counseling_safety_sft.py training/safety_eval_v2.py training/test_counseling_v2.py training/compare_gpu_lora.py training/kaggle_gpu_pilot.py
+        run: python -m py_compile training/build_counseling_safety_sft.py training/safety_eval_v2.py training/test_counseling_v2.py training/compare_gpu_lora.py training/kaggle_gpu_pilot.py training/blind_counseling_review.py training/test_blind_review.py
       - name: Synthetic provenance, non-leakage, dangerous negative controls
         run: python -u training/test_counseling_v2.py
+      - name: Blinded two-reviewer benchmark and critical safety gate
+        run: python -u training/test_blind_review.py
