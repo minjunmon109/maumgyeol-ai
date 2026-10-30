@@ -9,9 +9,44 @@ const file=$("file"),load=$("load"),send=$("send"),state=$("state"),
       message=$("message"),dialogue=$("dialogue"),form=$("chat");
 const guard=window.MaumgyeolCareGuard;
 const MAX_FILE_SIZE=1_950_000_000;
-const WASM_CDN="https://cdn.jsdelivr.net/npm/@wllama/wllama@3.8.1/esm/wasm/wllama.wasm";
+const WASM_CDN="https://cdn.jsdelivr.net/npm/@wllama/wllama@3.8.1/src/wasm/wllama.wasm";
 const SYSTEM="너는 마음결 V3 한국어 정서지원 실험용 AI야. 자격 있는 상담사나 의사를 사칭하지 말고 진단이나 절대 비밀 보장을 약속하지 마. 이전 대화에서 사용자가 직접 말한 사실만 반영하고 모르면 모른다고 답해. 위기 상황에는 즉시 안전 확보와 사람 도움을 우선하고 실제 상담·치료를 대신하지 마.";
 let model=null,loading=false,history=[],busy=false;
+const LOCAL_DB="maumgyeol-v3-cpu-local-v1";
+const LOCAL_KEY="q4km-71f40a7dee87f55b7fd948ce21b5842a6608f60a5f17f6319fd767004eeec565";
+const HIGHRISK=/자살|자해|목숨.{0,8}끊|죽고\s*싶|죽을\s*거|죽으려|약.{0,16}(먹|삼켰|복용)|수면제|폭력|해치|때리|학대|감금|위협|칼|흉기|응급|치료|처방/i;
+function database(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(LOCAL_DB,1);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("model"))req.result.createObjectStore("model")};
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+  });
+}
+async function readCachedModel(){
+  if(!("indexedDB" in window))return null;
+  const db=await database();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction("model","readonly");
+    const req=tx.objectStore("model").get(LOCAL_KEY);
+    req.onsuccess=()=>resolve(req.result?.blob instanceof Blob?req.result.blob:null);
+    req.onerror=()=>reject(req.error);
+    tx.oncomplete=()=>db.close();tx.onabort=()=>{db.close();reject(tx.error)};
+  });
+}
+async function saveCachedModel(blob){
+  if(!("indexedDB" in window))return false;
+  const quota=await navigator.storage?.estimate?.().catch(()=>null);
+  if(quota?.quota&&quota?.usage&&quota.quota-quota.usage<blob.size*1.05)return false;
+  const db=await database();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction("model","readwrite");
+    tx.objectStore("model").put({blob,name:"maumgyeol-v3-q4_k_m.gguf",size:blob.size},LOCAL_KEY);
+    tx.oncomplete=()=>{db.close();resolve(true)};
+    tx.onerror=()=>{db.close();reject(tx.error)};
+    tx.onabort=()=>{db.close();reject(tx.error)};
+  });
+}
+
 const speak=(role,value)=>{
   const p=document.createElement("div");p.className="line "+role;
   p.textContent=(role==="user"?"나":"실험 AI")+": "+String(value).slice(0,2100);
@@ -36,10 +71,11 @@ async function createRuntime(){
   if(!lib.Wllama)throw Error("기기 CPU용 WebAssembly 실행기를 불러오지 못했어.");
   const instance=new lib.Wllama({default:WASM_CDN});
   // Safari lacks some modern WASM features; compatibility build is needed.
-  if(typeof instance.setCompat==="function")instance.setCompat("default","safari");
+  // Safari needs the official Asyncify compatibility runtime; this is CPU inference.
+  instance.setCompat("default");
   return instance;
 }
-async function initializeWithFile(blob){
+async function initializeWithFile(blob,remember=true){
   if(loading||model)return;
   loading=true;enable();status("기기 CPU 모델을 준비하고 있어.");
   try{
@@ -52,7 +88,8 @@ async function initializeWithFile(blob){
       jinja:true
     });
     model=candidate;
-    status("기기 CPU 실행 준비 완료. 이 대화는 서버 AI를 사용하지 않아.");
+    status("실시간 V3 기기 CPU 대화 준비 완료.");
+    if(remember)saveCachedModel(blob).catch(()=>{});
     message.focus();
   }catch(e){
     status("CPU 모델 실행 실패: "+String(e?.message||e).slice(0,260));
@@ -91,6 +128,20 @@ form.addEventListener("submit",async event=>{
   if(!input)return;
   busy=true;enable();message.value="";speak("user",input);
   const next=[...history,{role:"user",content:input}];
+  if(!guard||typeof guard.preflight!=="function"||typeof guard.audit!=="function"){
+    status("안전 장치를 확인할 수 없어 실험 모델 실행을 중단했어.");
+    speak("assistant","안전 장치를 불러오지 못했어. 메인 사이트로 돌아가 주세요.");
+    busy=false;enable();return;
+  }
+  if(HIGHRISK.test(input)){
+    const safe=guard.preflight(next);
+    const advice=safe?.skipModel?safe.response:
+      "V3 실험 모델은 위기·의료 상황을 안전하게 처리하도록 검증되지 않았어. 이 경우 실험 모델에는 질문을 전달하지 않아. 급박한 위험이라면 119 또는 112에 연락해 주세요.";
+    history=next.concat({role:"assistant",content:advice}).slice(-10);
+    speak("assistant",advice);
+    busy=false;enable();return;
+  }
+
   try{
     const before=guard?.preflight(next);
     let answer;
@@ -111,4 +162,14 @@ form.addEventListener("submit",async event=>{
     speak("assistant","기기에서 실험 답변을 생성하지 못했어. 기기 RAM과 브라우저 호환성을 확인해 줘.");
   }finally{busy=false;enable();}
 });
-window.addEventListener("load",()=>{initializeFromApprovedUrl().catch(()=>{});},{once:true});
+window.addEventListener("load",async ()=>{
+  try{
+    const saved=await readCachedModel();
+    if(saved&&!model&&!loading){
+      await initializeWithFile(saved,false);
+      file.closest("label")?.setAttribute("hidden","");
+      return;
+    }
+  }catch(e){console.warn("Private local CPU model cache unavailable",e?.name||"unknown");}
+  await initializeFromApprovedUrl().catch(()=>{});
+},{once:true});
