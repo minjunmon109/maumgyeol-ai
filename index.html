@@ -365,7 +365,7 @@ body.focus-mode .rightbar{display:none}body.focus-mode .panes{grid-template-colu
 <section class="note-panel"><div class="quote">“</div>오늘을 잘 보내지 못했어도,<br>당신은 충분히 소중해요.<small>오늘의 작은 문장</small></section><div class="right-footer">한 번에 한 걸음.</div></aside>
 </div>
 </div></div>
-<script>'use strict';
+<script src="/counseling-guard.js"></script><script>'use strict';
 const $=id=>document.getElementById(id);
 window.maumgyeolAccount={required:false,ready:false,getToken:async()=>null,saveMessage:()=>Promise.resolve(),newConversation:()=>{},signOut:()=>{}};
 const messages=[];
@@ -503,10 +503,7 @@ const localAI=(()=>{
     try{sessionStorage.setItem(CRASH_MARKER,"1");}catch{}
     try{
       // Avoid oversizing the GPU KV cache and prefill work for a short mobile chat.
-      const compact=history.slice(-5).map(m=>({
-        role:m.role==="assistant"?"assistant":"user",
-        content:String(m.content||"").slice(-260)
-      }));
+      const compact=window.MaumgyeolCareGuard.compact(history);
       await referenceReady;
       const example=rolePrompt===SYSTEM?chooseCounselingExample(compact):null;
       const guidance=example
@@ -515,7 +512,7 @@ const localAI=(()=>{
           +"\n반드시 참고 사례를 복사하지 말고 현재 사용자의 사연과 질문에 맞춰 새 답변을 생성하라."
         : "";
       const stream=await model.chat.completions.create({
-        messages:[{role:"system",content:rolePrompt+guidance},...compact],
+        messages:[{role:"system",content:rolePrompt+(rolePrompt===SYSTEM?window.MaumgyeolCareGuard.instruction:"")+guidance},...compact],
         temperature:0.5,top_p:0.85,repetition_penalty:1.08,max_tokens:176,stream:true
       });
       let raw="",lastPreviewAt=0;
@@ -526,12 +523,12 @@ const localAI=(()=>{
         const now=performance.now();
         if(now-lastPreviewAt>180){
           const visible=clean(raw);
-          if(visible)onPreview(visible);
+          // Unscreeened partial response intentionally not shown.
           lastPreviewAt=now;
         }
       }
       const answer=clean(raw);
-      if(answer)onPreview(answer);
+      // Caller audits full response before it is displayed or spoken.
       if(!answer)throw Error("기기 모델이 빈 응답을 생성했습니다. 다시 시도해 주세요.");
       return answer;
     }finally{generating=false;try{sessionStorage.removeItem(CRASH_MARKER);}catch{}}
@@ -1255,18 +1252,19 @@ async function sendMessage(content){
   $("readyText").textContent="기기에서 답변 생성 중";
   messages.push({role:"user",content:text,at:Date.now()});addMessage("user",text);updateIntro();dailyEmotion.update();
   if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
-  const pending=addMessage("assistant","기기 AI 모델을 준비하고 있어요…",{pending:true});
+  const pending=addMessage("assistant","말씀을 살펴보고 답변을 준비하고 있어요…",{pending:true});
   try{
-    const answer=await localAI.complete(messages,(preview)=>{
-      pending.bubble.textContent=preview;pending.bubble.classList.remove("thinking");
-      if(!pending.wrapper.dataset.scrolled){pending.wrapper.dataset.scrolled="1";scrollBottom();}
-      voicePlayer.onPreview(preview);
-    });
-    if(fromCall){if(callInterface.isActive())callInterface.answer(answer,"none","local-model");}
-    else voicePlayer.onFinal(answer);
-    pending.wrapper.remove();messages.push({role:"assistant",content:answer,at:Date.now()});
-    if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
-    addMessage("assistant",answer,{safety:"none"});
+    const guard=window.MaumgyeolCareGuard;
+     const preflight=guard.preflight(messages);
+     // A crisis response never waits for WebGPU initialization.
+     const generated=preflight.skipModel?preflight.response:await localAI.complete(messages);
+     const checked=guard.audit(generated,messages);
+     const answer=checked.response;
+     if(fromCall){if(callInterface.isActive())callInterface.answer(answer,checked.safety,"local-model");}
+     else voicePlayer.onFinal(answer);
+     pending.wrapper.remove();messages.push({role:"assistant",content:answer,at:Date.now()});
+     if(window.maumgyeolAccount.required)window.maumgyeolAccount.saveMessage().catch(()=>{});
+     addMessage("assistant",answer,{safety:checked.safety});
   }catch(error){
     voicePlayer.stop();
     if(fromCall)callInterface.fail(error.message||"기기 AI 실행 오류");
