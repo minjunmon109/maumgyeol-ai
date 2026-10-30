@@ -1,0 +1,60 @@
+name: Maumgyeol free Kaggle GPU LoRA pilot (manual, NO DEPLOY)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maumgyeol-kaggle-gpu
+  cancel-in-progress: false
+jobs:
+  submit-private-kaggle-gpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check Kaggle authorization without exposing credentials
+        run: |
+          test -n "$KAGGLE_API_TOKEN" || (echo "::error::Set KAGGLE_API_TOKEN in repository Actions secrets" && exit 1)
+          test -n "$KAGGLE_USERNAME" || (echo "::error::Set KAGGLE_USERNAME in repository Actions variables" && exit 1)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install official Kaggle CLI
+        run: python -m pip install 'kaggle>=1.7.4'
+      - name: Build PRIVATE GPU T4 Kaggle job
+        run: |
+          mkdir -p kaggle_job
+          cp training/kaggle_gpu_pilot.py kaggle_job/maumgyeol_gpu.py
+          python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          username = os.environ["KAGGLE_USERNAME"]
+          assert re.fullmatch(r"[A-Za-z0-9_-]{1,64}", username), "Invalid Kaggle username"
+          metadata = {
+            "id": f"{username}/maumgyeol-kmi-gpu-pilot",
+            "title": "Maumgyeol KMI GPU Pilot",
+            "code_file": "maumgyeol_gpu.py",
+            "language": "python",
+            "kernel_type": "script",
+            "is_private": True,
+            "enable_gpu": True,
+            "enable_internet": True,
+            "machine_shape": "NvidiaTeslaT4",
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": [],
+            "model_sources": []
+          }
+          Path("kaggle_job/kernel-metadata.json").write_text(json.dumps(metadata, indent=2))
+          PY
+      - name: Submit private GPU job to Kaggle
+        run: |
+          kaggle kernels push -p kaggle_job --accelerator NvidiaTeslaT4 --timeout 7200
+          echo "Kaggle accepted the kernel submission; training status must be checked on Kaggle." >> "$GITHUB_STEP_SUMMARY"
+          echo "Private kernel: https://www.kaggle.com/code/${KAGGLE_USERNAME}/maumgyeol-kmi-gpu-pilot" >> "$GITHUB_STEP_SUMMARY"
+          echo "Kaggle may deny GPU if the account is not eligible or has no quota." >> "$GITHUB_STEP_SUMMARY"
