@@ -47,4 +47,9 @@ jobs:
                   continue
               safe.append(line[-340:])
           for line in safe[-22:]:print("DIAGNOSTIC_ERROR="+line)
+          progress=[int(v) for v in re.findall(r"TRAIN_PROGRESS\\s+(\\d+)/90",content)]
+          print("TRAINING_STEP_MAX="+(str(max(progress)) if progress else "NOT_REPORTED"))
+          print("MODEL_COMPARISON_RESULT_MARKERS="+str(content.count("COMPARISON_RESULT")))
+          print("TRAINING_90_SUCCESS_MARKER="+str("EXPERIMENT_COMPLETE_90_STEPS_V3=" in content))
+
           PY
