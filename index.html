@@ -509,7 +509,7 @@ const localAI=(()=>{
       // stories into the model prompt: they caused misleading context transfer.
       const guidance="";
       const stream=await model.chat.completions.create({
-        messages:[{role:"system",content:rolePrompt+(rolePrompt===SYSTEM?window.MaumgyeolCareGuard.instruction:"")+guidance},...compact],
+        messages:[{role:"system",content:rolePrompt+guidance},...compact],
         temperature:0.5,top_p:0.85,repetition_penalty:1.08,max_tokens:176,stream:true
       });
       let raw="",lastPreviewAt=0;
