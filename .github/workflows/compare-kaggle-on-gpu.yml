@@ -79,6 +79,21 @@ jobs:
             kaggle datasets create -p private_dataset -q
           fi
           echo "Private Kaggle input dataset updated; never public" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify Kaggle has finished indexing the PRIVATE LoRA dataset
+        run: |
+          python - <<'PY'
+          import os,subprocess,time,sys
+          handle=os.environ["DATASET_HANDLE"]
+          for i in range(24):
+              p=subprocess.run(["kaggle","datasets","files",handle],capture_output=True,text=True,timeout=45)
+              data=p.stdout
+              found=p.returncode==0 and "adapter_model.safetensors" in data and "training_manifest.json" in data
+              print(f"Private dataset ready check {i+1}/24: "+("READY" if found else "NOT_READY"),flush=True)
+              if found:
+                  sys.exit(0)
+              time.sleep(15)
+          sys.exit("Private Kaggle dataset is still indexing; will not run model comparison with missing input")
+          PY
       - name: Build private T4 GPU comparison script
         run: |
           mkdir -p eval_kernel
@@ -98,7 +113,11 @@ jobs:
           PY
       - name: Submit model comparison to Kaggle T4
         run: |
-          kaggle kernels push -p eval_kernel --accelerator NvidiaTeslaT4 --timeout 3600
+          kaggle kernels push -p eval_kernel --accelerator NvidiaTeslaT4 --timeout 3600 2>&1 | tee kaggle-submit.log
+          if grep -qi 'not valid dataset sources' kaggle-submit.log; then
+            echo "::error::Kaggle kernel missing private dataset attachment"
+            exit 1
+          fi
       - name: Track Kaggle terminal state (fail fast on errors)
         run: |
           python - <<'PY'
