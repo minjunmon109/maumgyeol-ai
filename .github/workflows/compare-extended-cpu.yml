@@ -41,7 +41,8 @@ jobs:
 
   compare-100step-trained-model:
     # Only run after GitHub run 40973308830 produces a real verified adapter.
-    if: github.event_name == 'workflow_dispatch'
+    # Run once on this exact user-requested evaluation commit; never run on PRs or routine pushes.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'Run verified 100-step counselor answer comparison')
     needs: [compare-code-tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 120
