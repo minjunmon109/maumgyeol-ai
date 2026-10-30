@@ -70,6 +70,9 @@ def parse(argv=None):
     p.add_argument("--learning-rate", type=float, default=1e-4)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--cpu-dtype", choices=["bfloat16","float32"], default="bfloat16")
+    p.add_argument("--device", choices=["cpu","cuda"], default="cpu", help="Explicit GPU opt-in; CPU is the safe default")
+    p.add_argument("--log-steps", type=int, default=5, help="Report training progress every N optimizer steps")
+    p.add_argument("--checkpoint-every", type=int, default=0, help="Save recoverable checkpoints every N steps; 0 disables")
     p.add_argument("--max-training-examples",type=int,default=0,help="0 means all")
     p.add_argument("--max-eval-examples",type=int,default=0,help="0 means all")
     p.add_argument("--dry-run", action="store_true", help="Validate dataset without any Torch dependencies")
@@ -98,6 +101,8 @@ def make_features(row, tokenizer, max_length):
 
 def main(argv=None):
     args = parse(argv)
+    if args.log_steps < 1 or args.checkpoint_every < 0:
+        raise SystemExit("log-steps >= 1 and checkpoint-every >= 0 required")
     if args.gradient_accumulation_steps < 1:
         raise SystemExit("gradient-accumulation-steps >= 1 required")
     if args.max_steps < 1 or args.max_length < 64:
@@ -124,16 +129,19 @@ def main(argv=None):
 
     import torch
     from torch.utils.data import Dataset
-    from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
+    from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainerCallback, TrainingArguments
     from peft import LoraConfig, get_peft_model
 
-    if torch.cuda.is_available():
-        raise SystemExit("This is a CPU-only training command; use the GPU pipeline for CUDA")
+    if args.device == "cpu" and torch.cuda.is_available():
+        raise SystemExit("This command defaults to CPU; pass --device cuda explicitly for GPU")
+    if args.device == "cuda" and not torch.cuda.is_available():
+        raise SystemExit("Requested CUDA GPU is unavailable; refusing silent CPU fallback")
     torch.set_num_threads(max(1, min(8, os.cpu_count() or 2)))
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=False)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
-    dtype = torch.bfloat16 if args.cpu_dtype == "bfloat16" else torch.float32
+    dtype = torch.float16 if args.device == "cuda" else (torch.bfloat16 if args.cpu_dtype == "bfloat16" else torch.float32)
+    print(json.dumps({"event":"training_device", "device":args.device, "gpu":torch.cuda.get_device_name(0) if args.device == "cuda" else None}), flush=True)
     base_model = AutoModelForCausalLM.from_pretrained(
         args.model, torch_dtype=dtype, low_cpu_mem_usage=True,
         trust_remote_code=False)
@@ -165,15 +173,22 @@ def main(argv=None):
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     training_args = TrainingArguments(
-        output_dir=str(output), use_cpu=True, fp16=False, bf16=False,
+        output_dir=str(output), use_cpu=(args.device == "cpu"), fp16=(args.device == "cuda"), bf16=False,
         optim="adamw_torch", per_device_train_batch_size=1, gradient_accumulation_steps=args.gradient_accumulation_steps,
         per_device_eval_batch_size=1, learning_rate=args.learning_rate,
-        max_steps=args.max_steps, save_strategy="no", eval_strategy="no",
-        logging_steps=5, report_to="none", seed=args.seed, remove_unused_columns=False,
+        max_steps=args.max_steps, save_strategy=("steps" if args.checkpoint_every else "no"),
+        save_steps=max(1, args.checkpoint_every), save_total_limit=2, eval_strategy="no",
+        logging_steps=args.log_steps, report_to="none", seed=args.seed, remove_unused_columns=False,
         dataloader_num_workers=0, gradient_checkpointing=False,
     )
+    class ProgressReporter(TrainerCallback):
+        def on_log(self, args, state, control, logs=None, **kwargs):
+            if state.global_step:
+                print(f"TRAIN_PROGRESS {state.global_step}/{state.max_steps} ({100 * state.global_step / state.max_steps:.1f}%)", flush=True)
+
     trainer = Trainer(model=model, args=training_args, train_dataset=CPUData(train),
-                      eval_dataset=CPUData(val), data_collator=collator)
+                      eval_dataset=CPUData(val), data_collator=collator,
+                      callbacks=[ProgressReporter()])
     result = trainer.train()
     metrics = trainer.evaluate()
     model.save_pretrained(output, safe_serialization=True)
@@ -186,8 +201,10 @@ def main(argv=None):
         "base_model": args.model, "target_website_base": BASE,
         "base_compatible_with_site": args.model == BASE,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(),
-        "training_device": "cpu", "method": "LoRA CPU", "base_weight_dtype": args.cpu_dtype,
+        "training_device": args.device, "method": "LoRA " + args.device.upper(),
+        "base_weight_dtype": str(dtype),
         "gradient_accumulation_steps": args.gradient_accumulation_steps,
+        "checkpoint_every": args.checkpoint_every,
         "train_examples": len(train), "validation_examples": len(val),
         "train_sha256": sha256(args.train), "val_sha256": sha256(args.val),
         "adapter_sha256": sha256(adapter), "steps": int(result.global_step),
