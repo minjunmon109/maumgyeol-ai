@@ -1,0 +1,55 @@
+name: Test V3 visitor CPU/WASM lab and no production rollout
+on:
+  push:
+    branches: [main]
+    paths:
+      - app.py
+      - cpu-v3-lab.html
+      - cpu-v3-lab.js
+      - cpu-model-config.json
+      - training/export_v3_cpu_gguf.py
+      - training/merge_cpu_adapter.py
+      - .github/workflows/test-cpu-v3-lab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-cpu-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python and JavaScript syntax
+        run: |
+          python -m py_compile app.py training/export_v3_cpu_gguf.py training/merge_cpu_adapter.py
+          node --check cpu-v3-lab.js
+      - name: Validate V3 device-only inference and fail-closed safety restrictions
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          app=Path("app.py").read_text(encoding="utf-8")
+          js=Path("cpu-v3-lab.js").read_text(encoding="utf-8")
+          html=Path("cpu-v3-lab.html").read_text(encoding="utf-8")
+          config=json.loads(Path("cpu-model-config.json").read_text(encoding="utf-8"))
+          for path in ("/cpu-v3-lab","/cpu-v3-lab.js","/cpu-model-config.json"):
+              assert path in app
+          assert "if not FIREBASE_ENABLED and not auth(" in app
+          assert "n_gpu_layers:0" in js, "The visitor CPU-only execution flag was removed!"
+          assert "new lib.Wllama" in js and "loadModel([blob]" in js
+          assert "guard?.preflight(next)" in js and "guard?.audit(" in js
+          assert "file.size" not in js or "MAX_FILE_SIZE" in js
+          assert 'mode!=="experimental_cpu_local_only"' in js
+          assert "MaumgyeolCareGuard" in js
+          assert "실험" in html and "전문" in html
+          assert config["active"] is False
+          assert config["release_approved"] is False
+          assert config["default_production_counseling"] is False
+          assert config["adapter_sha256"]=="71f40a7dee87f55b7fd948ce21b5842a6608f60a5f17f6319fd767004eeec565"
+          base=json.loads(Path("model-release.json").read_text(encoding="utf-8"))
+          assert base["active"] is False
+          print("CPU lab flags and release restrictions PASS; no clinical validation implied")
+          PY
