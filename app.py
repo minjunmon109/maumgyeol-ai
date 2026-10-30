@@ -16,13 +16,13 @@ AUTH_SECRET = os.environ["AUTH_SECRET"]
 # Historical Kilo-hosted mode: user messages require explicit external_consent.
 # Existing V3-on-device files stay separate and unmodified.
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai").strip()
-MODEL_URL = os.getenv("MODEL_URL", "https://ai-gateway.kilo.ai/api/v1/chat/completions").strip()
+MODEL_URL = os.getenv("MODEL_URL", "").strip()
 MODEL_API_KEY = os.getenv("MODEL_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "z-ai/glm-5:free").strip()
+MODEL_NAME = os.getenv("MODEL_NAME", "openai/gpt-oss-120b").strip()
 KILO_FREE_MODEL = (urlsplit(MODEL_URL).hostname in ("api.kilo.ai", "ai-gateway.kilo.ai") and MODEL_NAME.endswith(":free"))
 KEYLESS_BACKEND = KILO_FREE_MODEL
 FREE_EXTERNAL = bool(MODEL_URL and urlsplit(MODEL_URL).hostname not in ("localhost","127.0.0.1","::1",None))
-MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("ollama" if MODEL_PROVIDER == "ollama" else "custom")
+MODEL_SOURCE = "groq" if urlsplit(MODEL_URL).hostname == "api.groq.com" else ("kilo-anonymous" if KEYLESS_BACKEND else ("ollama" if MODEL_PROVIDER == "ollama" else "custom"))
 
 MODEL_PROBE_STATUS = "ok" if MODEL_URL else "not_configured"
 FREE_MODEL_COOLDOWN_UNTIL = 0.0
@@ -133,7 +133,7 @@ REHEARSAL_PROMPT = """당신은 '마음결'의 현실 대화 리허설에서 연
 def build_chat_payload(messages, stream=False, mode="auto", rehearsal=None):
     # Use a compact recent context; less prompt processing and output reduces
     # latency, but free upstream latency is outside our control.
-    history=[{"role":m["role"],"content":m["content"][-1000:]} for m in messages[-8:]]
+    history=[{"role":m["role"],"content":m["content"][-1200:]} for m in messages[-14:]]
     if rehearsal:
         partner=REHEARSAL_PARTNERS[rehearsal["partner"]]
         situation=rehearsal["scenario"]
@@ -141,12 +141,15 @@ def build_chat_payload(messages, stream=False, mode="auto", rehearsal=None):
     else:
         system_text=PROMPT+conversation_instruction(messages,mode)
     payload={"model":MODEL_NAME,"messages":[{"role":"system","content":system_text}]+history,
-             "stream":stream,"temperature":0.35,"max_tokens":260}
+             "stream":stream,"temperature":0.5,"max_tokens":1100}
     if MODEL_PROVIDER=="ollama":
         payload["think"]=False
         payload["options"]={"temperature":0.35,"num_predict":512,"num_ctx":8192}
         payload.pop("temperature",None)
         payload.pop("max_tokens",None)
+    elif urlsplit(MODEL_URL).hostname == "api.groq.com":
+        payload["reasoning_effort"]="low"
+        payload["max_tokens"]=1100
     elif "openrouter.ai" == urlsplit(MODEL_URL).hostname:
         payload["provider"]={"data_collection":"deny"}
     return payload
