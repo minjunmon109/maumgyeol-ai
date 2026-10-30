@@ -1,4 +1,4 @@
-name: Diagnose counseling v2 Kaggle GPU error (metadata only)
+name: Diagnose counseling v2 Kaggle GPU current status (metadata only)
 on:
   push:
     branches: [main]
@@ -40,6 +40,8 @@ jobs:
               found.append(line)
           for line in found[-10:]:
               print("ERROR_OR_SUCCESS_MARKER="+line)
-          for n in (5,10,15,20,30,40,50,60):
-              if "TRAIN_PROGRESS "+str(n)+"/60" in logs.stdout:print("TRAINING_REACHED_STEP="+str(n))
+          steps=[int(n) for n in re.findall(r"TRAIN_PROGRESS\s+(\d+)/60",logs.stdout)]
+          print("MAX_TRAINING_STEP="+(str(max(steps)) if steps else "NONE_REPORTED"))
+          print("GPU_HOLDOUT_EVAL_MARKERS="+str(logs.stdout.count("EVAL_PROGRESS")))
+          print("GPU_V2_SUCCESS_MARKER="+str("GPU COUNSELING V2 SUCCESS" in logs.stdout))
           PY
