@@ -1,0 +1,100 @@
+name: Research CPU retrain with balanced crisis responses (NOT APPROVED)
+on:
+  push:
+    branches: [safety-curriculum-retrain-20261030]
+    paths:
+      - .github/workflows/retrain-safety-cpu.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read
+jobs:
+  safer-cpu-retrain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 170
+    env:
+      TOKENIZERS_PARALLELISM: 'false'
+      HF_HOME: /tmp/maumgyeol-hf
+      OMP_NUM_THREADS: '4'
+      MKL_NUM_THREADS: '4'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU-only training and generation dependencies
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r training/requirements-cpu.txt
+      - name: Run dataset, isolation and release-blocking unit tests
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py'
+          python -m py_compile training/prepare_safety_curriculum.py
+      - name: Prepare KMI plus safety synthetic curriculum, with separate holdouts
+        run: |
+          python training/prepare_safety_curriculum.py \
+            --kmi-count 520 --safety-count 520 \
+            --output training/data/safety-curriculum
+          python training/train_cpu_lora.py \
+            --train training/data/safety-curriculum/train.jsonl \
+            --val training/data/safety-curriculum/val.jsonl \
+            --dry-run
+      - name: Train new Qwen2.5-1.5B LoRA from base on CPU (not prior degraded weights)
+        run: |
+          python -u training/train_cpu_lora.py \
+            --train training/data/safety-curriculum/train.jsonl \
+            --val training/data/safety-curriculum/val.jsonl \
+            --output training/outputs/safer-cpu-lora \
+            --max-steps 120 --max-length 192 \
+            --max-eval-examples 52 --learning-rate 0.00005 --cpu-dtype bfloat16
+      - name: Verify real trained safetensors, weight checksum and finite losses
+        run: |
+          python training/verify_cpu_training.py \
+            --output training/outputs/safer-cpu-lora --expected-steps 120
+      - name: Preserve experimental weights and training provenance (never auto deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-balanced-safety-cpu-120step-UNVALIDATED
+          path: |
+            training/outputs/safer-cpu-lora/
+            training/data/safety-curriculum/provenance.json
+          retention-days: 14
+          if-no-files-found: error
+      - name: Generate 15 actual base-model Korean counseling responses
+        run: |
+          python -u training/generate_cpu_eval.py \
+            --max-new-tokens 120 \
+            --output training/outputs/safety-retest/baseline_generations.jsonl
+      - name: Generate same 15 replies with newly trained CPU LoRA
+        run: |
+          python -u training/generate_cpu_eval.py \
+            --max-new-tokens 120 \
+            --adapter training/outputs/safer-cpu-lora \
+            --output training/outputs/safety-retest/candidate_generations.jsonl
+      - name: Fail deployment gate if any crisis, quality or regression check fails
+        run: |
+          python -u training/compare_model_audits.py \
+            --baseline training/outputs/safety-retest/baseline_generations.jsonl \
+            --candidate training/outputs/safety-retest/candidate_generations.jsonl \
+            --adapter training/outputs/safer-cpu-lora \
+            --min-steps 120 \
+            --output training/outputs/safety-retest/reports
+      - name: Preserve actual synthetic test replies and failed audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-balanced-safety-120step-retest-NOT-CLINICAL
+          path: |
+            training/outputs/safety-retest/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Assert unapproved site model never activated
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          with open('model-release.json',encoding='utf-8') as f:
+              release=json.load(f)
+          assert release.get('active') is False, "Unapproved model was activated"
+          print('No clinical review or iPhone compatibility claimed. No site release.')
+          PY
