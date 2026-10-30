@@ -37,7 +37,8 @@ footer{font-size:12px;color:var(--muted);margin-top:24px}
 <p>지금 급박한 위기라면 한국 긴급전화 119·112, 자살예방상담전화 109를 이용해 주세요.</p></div>
 <div class="panel">
 <strong>기기 CPU 모델 준비</strong>
-<p class="small">모델이 승인된 전용 URL에 준비되면 다운로드 표시 없이 자동으로 준비할 수 있어. 현재는 GGUF 파일을 직접 선택하는 실험 모드야. 대용량 파일이므로 휴대폰에는 RAM 여유가 많이 필요해.</p>
+<p class="small">전용 모델 저장소 연결 전까지는 최초 1회 GGUF 파일 선택이 필요해. 이후에는 기기에 저장된 모델을 자동으로 다시 불러오도록 구성했어. 대용량 파일이므로 휴대폰에는 RAM 여유가 많이 필요해.</p>
+<p class="small"><a href="https://github.com/minjunmon109/maumgyeol-ai/actions/runs/41009500024" target="_blank" rel="noopener noreferrer">내 GitHub에서 실제 V3 CPU GGUF 모델 받기 (약 986MB · 로그인 필요)</a><br>실험 결과의 <strong>maumgyeol-v3-CPU-Q4_K_M-EXPERIMENTAL-NOT-APPROVED</strong> 아티팩트를 받아 ZIP을 풀고 .gguf 파일을 선택해 주세요. 한 번 로드한 파일은 기기 저장 공간이 허용하는 경우 다음 접속부터 자동으로 다시 불러와요.</p>
 <label class="file">V3 CPU 모델 파일(.gguf) 선택
 <input id="file" type="file" accept=".gguf" aria-label="V3 CPU GGUF 파일 선택"></label>
 <button id="load" disabled>선택한 모델로 기기 CPU 실행</button>
