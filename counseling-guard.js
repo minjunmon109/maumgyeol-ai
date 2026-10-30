@@ -12,9 +12,12 @@ const R={
  negation:/(자살|자해|죽).{0,12}(생각\s*(없|하지\s*않)|하지\s*않겠|안\s*할)/i,
  delusion:/(생각을\s*읽|뇌파를\s*(보내|송신)|도청당|누군가\s*감시|칩을\s*심|머리에\s*장치|조종당)/i,
  affirm:/(그런\s*(장치|칩|기계)가\s*(있을\s*수|실제|존재)|그럴\s*수\s*있습니다|맞습니다.{0,25}(읽|도청|조종|감시)|확실히.{0,25}(읽|도청|조종|감시))/i,
+ privacyQuestion:/(절대|100\\s*%|무조건|서버에|저장|삭제|비밀|외부로|공유).{0,30}(보장|약속|비밀|저장|안\\s*남|안\\s*하|않|남아|남지|공유|안전)|(?:개인정보|채팅기록|대화).{0,20}(저장|비밀|삭제|남|기록)/i,
+ privacyPromise:/(서버에.{0,12}저장하지\\s*않|정보를.{0,15}공유하지\\s*않|대화는.{0,12}저장되지\\s*않|기록은.{0,12}남지\\s*않|누구에게도\\s*말하지\\s*않|기억하고.{0,12}저장하지\\s*않)/i,
  privacy:/(절대.{0,15}(저장.{0,8}않|비밀)|100\s*%.{0,10}(비밀|보장|안전)|완벽한\s*비밀|아무도\s*볼\s*수\s*없|무조건.{0,10}(비밀|저장되지))/i,
  medicine:/(약|복용량|처방약).{0,30}(두\s*배(?:로)?\s*(먹|복용|늘)|임의로\s*늘|더\s*드세요|끊으세요)|더\s*먹어도\s*됩니다/i,
  diagnosis:/(당신은|너는|확실히|분명히).{0,20}(조울증|양극성장애|우울증|조현병|ADHD).{0,9}(입니다|이에요|환자|확실)|(?:조울증|양극성장애|우울증|조현병|ADHD).{0,13}(확실|진단합니다)/i,
+ isolationQuestion:/(너만\\s*(있으면|믿|필요)|다른\\s*사람.{0,14}필요\\s*없|가족.{0,14}필요\\s*없|친구.{0,14}필요\\s*없|아무도\\s*안\\s*만날)/i,
  dependence:/(나만\s*있으면\s*돼|다른\s*사람은\s*필요\s*없|가족.{0,10}필요\s*없|친구.{0,10}필요\s*없)/i,
  permission:/(무엇을\s*해도\s*괜찮|죽어도\s*괜찮|계획대로\s*해|원하는\s*대로\s*하)/i,
  unknown:/(뭔지\s*알아|무슨\s*일인지\s*알아|뭐가\s*문제인지\s*알아|왜\s*(힘든|우울한)지\s*알아)/i,
@@ -67,8 +70,11 @@ function preflight(history){
  if(R.unknown.test(s)){
   const prev=(history||[]).filter(m=>m.role==="user").slice(0,-1);
   // Avoid inventing the missing concern if the user has only disclosed vague distress.
-  if(!prev.some(m=>String(m.content||"").length>50))
-   return {response:M.unknown,safety:"none",skipModel:true,reason:"unknown-context"};
+  const specific=prev.some(m=> {
+   const text=String(m.content||"");
+   return /(엄마|아빠|친구|연인|형제|가족|동료|회사|직장|학교|시험|수업|이별|헤어|실수|싸웠|다퉜|돌아가셨|사고|병원|해고|불합격|성적|학대|폭력)/.test(text)||text.length>65;
+  });
+  if(!specific)return {response:M.unknown,safety:"none",skipModel:true,reason:"unknown-context"};
  }
  return {response:null,safety:"none",skipModel:false,reason:"model"};
 }
@@ -78,17 +84,25 @@ function audit(answer,history){
  if(s.length<4)return {response:M.fallback,safety:"none",changed:true,reason:"empty"};
  if(R.permission.test(s))return {response:M.fallback,safety:"none",changed:true,reason:"permission"};
  if(R.delusion.test(last)&&R.affirm.test(s))return {response:M.delusion,safety:"concern",changed:true,reason:"delusion"};
- if(R.privacy.test(s))return {response:M.privacy,safety:"none",changed:true,reason:"privacy"};
+ if(R.privacy.test(s)||R.privacyPromise.test(s)||R.privacyQuestion.test(last))return {response:M.privacy,safety:"none",changed:true,reason:"privacy"};
  if(R.medicine.test(s)||R.diagnosis.test(s))return {response:M.medical,safety:"none",changed:true,reason:"medical"};
- if(R.dependence.test(s))return {response:M.dependence,safety:"none",changed:true,reason:"dependency"};
+ if(R.dependence.test(s)|| (R.isolationQuestion.test(last)&&!/(다른\\s*사람|친구|가족|전문가|연결|관계)/.test(s)))return {response:M.dependence,safety:"none",changed:true,reason:"dependency"};
  if(R.unknown.test(last)&&/(알고\s*있|분명히|당연히)/.test(s))return {response:M.unknown,safety:"none",changed:true,reason:"fabrication"};
  if(R.noAdvice.test(last)&&/(해야\s*합니다|추천합니다|해결책|먼저\s*해\s*보)/.test(s))
   return {response:M.listen,safety:"none",changed:true,reason:"unwanted-advice"};
  return {response:s,safety:"none",changed:false,reason:"accepted"};
 }
 function compact(history){
+ // Bounded context for iPhone's 1152-token WebGPU window; latest words first.
+ // Includes only the current chat. Nothing is stored or sent to a server here.
  const arr=(history||[]).filter(m=>m&&(m.role==="user"||m.role==="assistant")&&typeof m.content==="string").slice(-9);
- return arr.map((m,i)=>({role:m.role,content:m.content.slice(-(i===arr.length-1?360:170))}));
+ const kept=[];let budget=620;
+ for(let i=arr.length-1;i>=0&&budget>0;i--){
+   const cap=Math.min(budget,i===arr.length-1?230:i===arr.length-2?105:i===arr.length-3?100:70);
+   const msg=arr[i],content=msg.content.slice(-cap);
+   if(content.trim()){kept.unshift({role:msg.role,content});budget-=content.length;}
+ }
+ return kept;
 }
 const instruction="\n[대화품질] 사용자가 실제 말한 사실만 사용하고 모르는 사연은 모른다고 하세요. 반복 인사·메아리 답변·똑같은 질문은 피하세요. 사용자가 경청을 원하면 조언하지 않고, 원할 때만 해결책을 제안하세요. 앞선 대화의 의미를 연결하되 인물의 마음이나 진단을 단정하지 마세요. 근거 없는 감시·생각읽기 주장을 긍정하지 마세요. 위험에 처하면 즉각적 안전과 사람의 도움을 우선하세요.";
 const guard=Object.freeze({classify,preflight,audit,compact,instruction});
