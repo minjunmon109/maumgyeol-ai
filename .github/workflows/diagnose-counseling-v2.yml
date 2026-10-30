@@ -1,0 +1,45 @@
+name: Diagnose counseling v2 Kaggle GPU error (metadata only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/diagnose-counseling-v2.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KERNEL: huhuukgghhuu/maumgyeol-counseling-v2-gpu
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip -q install 'kaggle>=2.2.5'
+      - name: Fetch private Kaggle state and redacted error identifiers
+        run: |
+          python - <<'PY'
+          import os,subprocess,json,re
+          handle=os.environ["KERNEL"]
+          assert os.environ.get("KAGGLE_API_TOKEN")
+          status=subprocess.run(["kaggle","kernels","status",handle],capture_output=True,text=True,timeout=40)
+          match=re.search(r"KernelWorkerStatus[.]([A-Z_]+)",status.stdout+"\n"+status.stderr)
+          print("KAGGLE_V2_STATE="+(match.group(1) if match else "UNKNOWN"))
+          logs=subprocess.run(["kaggle","kernels","logs",handle],capture_output=True,text=True,timeout=60)
+          print("KAGGLE_LOGS_REQUEST_OK="+str(logs.returncode==0))
+          found=[]
+          for raw in (logs.stdout+"\n"+logs.stderr).splitlines():
+              if not re.search(r"Traceback|ImportError|ModuleNotFoundError|ValueError|AssertionError|RuntimeError|SyntaxError|FileNotFoundError|CalledProcessError|GPU COUNSELING V2 SUCCESS",raw,re.I):
+                  continue
+              line=raw.strip()
+              if re.search(r"secret|password|token|api.key|Bearer|authorization|@|https?://",line,re.I):continue
+              if len(line)>320:line=line[-320:]
+              found.append(line)
+          for line in found[-10:]:
+              print("ERROR_OR_SUCCESS_MARKER="+line)
+          for n in (5,10,15,20,30,40,50,60):
+              if "TRAIN_PROGRESS "+str(n)+"/60" in logs.stdout:print("TRAINING_REACHED_STEP="+str(n))
+          PY
