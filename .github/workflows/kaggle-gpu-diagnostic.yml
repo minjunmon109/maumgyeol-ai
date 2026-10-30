@@ -1,0 +1,58 @@
+name: Diagnose existing Kaggle GPU pilot (NO DEPLOY)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/kaggle-gpu-diagnostic.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KERNEL_HANDLE: huhuukgghhuu/maumgyeol-kmi-gpu-pilot
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Kaggle CLI
+        run: python -m pip -q install 'kaggle>=2.2.5'
+      - name: Diagnose status and training progress WITHOUT private output
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os, re, subprocess, sys
+          handle=os.environ["KERNEL_HANDLE"]
+          if not os.environ.get("KAGGLE_API_TOKEN"):
+              sys.exit("Kaggle secret is not configured")
+          result=subprocess.run(["kaggle","kernels","status",handle],
+                               text=True,capture_output=True,timeout=40)
+          status_text=result.stdout+"\n"+result.stderr
+          match=re.search(r"KernelWorkerStatus\\.([A-Z_]+)",status_text)
+          if match:
+              state=match.group(1)
+              print("KAGGLE_REMOTE_STATE="+state)
+          else:
+              state="UNKNOWN"
+              print("KAGGLE_REMOTE_STATE=UNKNOWN")
+              print("STATUS_COMMAND_RETURN_CODE="+str(result.returncode))
+              print("STATUS_OUTPUT_FORMAT_VALID="+str(bool(result.stdout.strip())))
+          # Logs are not printed. Only report step progress / success marker.
+          if state in {"COMPLETE","ERROR"}:
+              logs=subprocess.run(["kaggle","kernels","logs",handle],
+                  text=True,capture_output=True,timeout=60)
+              progress=[int(n) for n in re.findall(r"TRAIN_PROGRESS\\s+(\\d+)/20",logs.stdout)]
+              print("LAST_REPORTED_TRAIN_STEP="+(str(max(progress)) if progress else "NOT_REPORTED"))
+              print("TRAIN_SUCCESS_MARKER="+str("GPU PILOT SUCCESS: 20/20" in logs.stdout))
+              print("KAGGLE_LOG_FETCH_OK="+str(logs.returncode==0))
+              files=subprocess.run(["kaggle","kernels","files",handle],
+                  text=True,capture_output=True,timeout=60)
+              print("KAGGLE_OUTPUT_LIST_FETCH_OK="+str(files.returncode==0))
+              print("MODEL_ADAPTER_LISTED="+str("adapter_model.safetensors" in files.stdout))
+              print("TRAINING_MANIFEST_LISTED="+str("training_manifest.json" in files.stdout))
+          if state=="UNKNOWN":
+              sys.exit("Unable to verify Kaggle status; check API authorization")
+          PY
