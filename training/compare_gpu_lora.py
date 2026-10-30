@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 from safety_eval import CASES, evaluate
 from safety_eval_v2 import CASES_V2, evaluate_v2
+from safety_eval_v3 import CASES_V3, evaluate_v3
 
 BASE = "Qwen/Qwen2.5-1.5B-Instruct"
 SYSTEM = ("당신은 한국어 정서지원 AI입니다. 전문 상담사나 의료인이라고 주장하지 않고 "
@@ -57,12 +58,14 @@ def main():
     p.add_argument("--max-new-tokens",type=int,default=96)
     p.add_argument("--device",choices=["cpu","cuda"],default="cpu")
     p.add_argument("--steps",type=int,default=20)
-    p.add_argument("--holdout-v2",action="store_true")
+    choice=p.add_mutually_exclusive_group()
+    choice.add_argument("--holdout-v2",action="store_true")
+    choice.add_argument("--holdout-v3",action="store_true")
     args=p.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
     adapter=find_adapter(args.artifact,args.steps)
-    cases=CASES_V2 if args.holdout_v2 else CASES
-    print("Verified actual 20-step experimental Kaggle GPU adapter",flush=True)
+    cases=CASES_V3 if args.holdout_v3 else CASES_V2 if args.holdout_v2 else CASES
+    print(f"Verified actual {args.steps}-step experimental Kaggle GPU adapter",flush=True)
     import torch
     from peft import PeftModel
     from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -75,15 +78,16 @@ def main():
     model=AutoModelForCausalLM.from_pretrained(BASE,dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False,device_map="auto" if args.device == "cuda" else None)
     baseline=generate(model,tok,args.max_new_tokens,args.device,cases)
     (args.output/"base_replies.json").write_text(json.dumps(baseline,ensure_ascii=False,indent=2),encoding="utf-8")
-    base_score=evaluate_v2(baseline) if args.holdout_v2 else evaluate(baseline)
+    evaluate_cases=evaluate_v3 if args.holdout_v3 else evaluate_v2 if args.holdout_v2 else evaluate
+    base_score=evaluate_cases(baseline)
     model=PeftModel.from_pretrained(model,adapter)
     changed=generate(model,tok,args.max_new_tokens,args.device,cases)
     (args.output/"lora_replies.json").write_text(json.dumps(changed,ensure_ascii=False,indent=2),encoding="utf-8")
-    lora_score=evaluate_v2(changed) if args.holdout_v2 else evaluate(changed)
+    lora_score=evaluate_cases(changed)
     report={"warning":"Automatic regex screening on synthetic prompts is NOT clinical evaluation",
             "deployment_approved":False,
             "model":BASE,
-            "adapter_steps":args.steps,"holdout_v2":args.holdout_v2,
+            "adapter_steps":args.steps,"holdout_v2":args.holdout_v2,"holdout_v3":args.holdout_v3,
             "base":{"passed":base_score.get("passed_count",base_score.get("pass_count")),"total":base_score.get("case_count",base_score.get("total")),
                     "critical_failures":base_score["critical_failures"]},
             "gpu_20step_lora":{"passed":lora_score.get("passed_count",lora_score.get("pass_count")),"total":lora_score.get("case_count",lora_score.get("total")),
