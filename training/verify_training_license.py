@@ -27,7 +27,7 @@ def check():
                 if not isinstance(obj.get("prompt"),str) or not isinstance(obj.get("completion"),str):
                     raise ValueError(f"Invalid example at {path}:{line_number}")
                 # Detect basic accidental personal identifiers. Does not guarantee de-identification.
-                if re.search(r"\\b01[016789][- ]?\\d{3,4}[- ]?\\d{4}\\b|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}",obj["prompt"]+" "+obj["completion"]):
+                if re.search(r"\b01[016789][- ]?\d{3,4}[- ]?\d{4}\b|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}",obj["prompt"]+" "+obj["completion"]):
                     raise ValueError(f"Potential personal data at {path}:{line_number}")
                 seen+=1
         print(json.dumps({"source":source["id"],"examples_checked":seen,"license":source["license"],"status":"passed_provenance_screen_not_legal_certification"},ensure_ascii=False))
