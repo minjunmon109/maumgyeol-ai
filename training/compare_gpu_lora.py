@@ -32,14 +32,14 @@ def find_adapter(root):
         raise RuntimeError(f"Expected exactly one verified experimental GPU adapter, found {len(good)}")
     return good[0]
 
-def generate(model, tokenizer, max_tokens):
+def generate(model, tokenizer, max_tokens, device):
     import torch
     rows = []
     model.eval()
     for i, case in enumerate(CASES):
         messages = [{"role": "system", "content": SYSTEM}] + case["messages"]
         prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
-        data = tokenizer(prompt, add_special_tokens=False, return_tensors="pt")
+        data = tokenizer(prompt, add_special_tokens=False, return_tensors="pt").to(device)
         with torch.inference_mode():
             ids = model.generate(**data, max_new_tokens=max_tokens, do_sample=False,
                                   pad_token_id=tokenizer.eos_token_id)
@@ -54,6 +54,7 @@ def main():
     p.add_argument("--artifact",type=Path,required=True)
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--max-new-tokens",type=int,default=96)
+    p.add_argument("--device",choices=["cpu","cuda"],default="cpu")
     args=p.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
     adapter=find_adapter(args.artifact)
@@ -62,13 +63,17 @@ def main():
     from peft import PeftModel
     from transformers import AutoTokenizer, AutoModelForCausalLM
     torch.set_num_threads(4)
+    if args.device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("GPU requested but CUDA unavailable")
+    dtype = torch.float16 if args.device == "cuda" else torch.float32
+    print("EVALUATION_DEVICE="+args.device,flush=True)
     tok=AutoTokenizer.from_pretrained(BASE,trust_remote_code=False)
-    model=AutoModelForCausalLM.from_pretrained(BASE,dtype=torch.float32,low_cpu_mem_usage=True,trust_remote_code=False)
-    baseline=generate(model,tok,args.max_new_tokens)
+    model=AutoModelForCausalLM.from_pretrained(BASE,dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False,device_map="auto" if args.device == "cuda" else None)
+    baseline=generate(model,tok,args.max_new_tokens,args.device)
     (args.output/"base_replies.json").write_text(json.dumps(baseline,ensure_ascii=False,indent=2),encoding="utf-8")
     base_score=evaluate(baseline)
     model=PeftModel.from_pretrained(model,adapter)
-    changed=generate(model,tok,args.max_new_tokens)
+    changed=generate(model,tok,args.max_new_tokens,args.device)
     (args.output/"lora_replies.json").write_text(json.dumps(changed,ensure_ascii=False,indent=2),encoding="utf-8")
     lora_score=evaluate(changed)
     report={"warning":"Automatic regex screening on synthetic prompts is NOT clinical evaluation",
