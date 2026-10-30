@@ -9,7 +9,7 @@ const file=$("file"),load=$("load"),send=$("send"),state=$("state"),
       message=$("message"),dialogue=$("dialogue"),form=$("chat");
 const guard=window.MaumgyeolCareGuard;
 const MAX_FILE_SIZE=1_950_000_000;
-const WASM_CDN="https://cdn.jsdelivr.net/npm/@wllama/wllama@3.8.1/src/wasm/wllama.wasm";
+const WASM_CDN="https://cdn.jsdelivr.net/npm/@wllama/wllama@3.8.1/esm/wasm/wllama.wasm";
 const SYSTEM="너는 마음결 V3 한국어 정서지원 실험용 AI야. 자격 있는 상담사나 의사를 사칭하지 말고 진단이나 절대 비밀 보장을 약속하지 마. 이전 대화에서 사용자가 직접 말한 사실만 반영하고 모르면 모른다고 답해. 위기 상황에는 즉시 안전 확보와 사람 도움을 우선하고 실제 상담·치료를 대신하지 마.";
 let model=null,loading=false,history=[],busy=false;
 const LOCAL_DB="maumgyeol-v3-cpu-local-v1";
@@ -108,11 +108,10 @@ async function initializeFromApprovedUrl(){
     if(parsed.protocol!=="https:"||parsed.username||parsed.password)return;
     loading=true;enable();status("기기 CPU 모델을 준비 중이야.");
     const runtime=await createRuntime();
-    await runtime.loadModelFromUrl(parsed.href,{
+    await runtime.loadModelFromUrl({url:parsed.href},{
       n_gpu_layers:0,n_threads:1,n_ctx:1024,n_batch:64,jinja:true,
-      useCache:true
     });
-    model=runtime;status("기기 CPU 모델이 준비됐어.");message.focus();
+    model=runtime;status("실시간 V3 기기 CPU 대화 준비 완료.");message.focus();
   }catch{
     status("자동 CPU 모델 준비는 사용할 수 없어. GGUF 파일로 실험할 수 있어.");
   }finally{loading=false;enable();}
