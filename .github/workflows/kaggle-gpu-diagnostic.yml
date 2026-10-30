@@ -48,6 +48,22 @@ jobs:
               print("LAST_REPORTED_TRAIN_STEP="+(str(max(progress)) if progress else "NOT_REPORTED"))
               print("TRAIN_SUCCESS_MARKER="+str("GPU PILOT SUCCESS: 20/20" in logs.stdout))
               print("KAGGLE_LOG_FETCH_OK="+str(logs.returncode==0))
+              # Print only a few exception/error summaries from Kaggle logs.
+              # Do not expose full private logs or any credential-bearing lines.
+              if state == "ERROR":
+                  raw = logs.stdout + "\\n" + logs.stderr
+                  candidates = []
+                  for line in raw.splitlines():
+                      if re.search("Traceback|Exception|Error|failed|No module|not found|ImportError|Assertion", line, re.I):
+                          line = line.strip()
+                          if re.search("token|secret|password|authorization|credential|api.key|@", line, re.I):
+                              continue
+                          line = re.sub(r"https?://[^ ]+", "<url>", line)
+                          line = re.sub(r"[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}", "<email>", line)
+                          candidates.append(line[-300:])
+                  for i, line in enumerate(candidates[-8:]):
+                      print("REDACTED_ERROR_LINE_"+str(i+1)+"="+line)
+                  print("ERROR_LINE_COUNT="+str(len(candidates)))
               files=subprocess.run(["kaggle","kernels","files",handle],
                   text=True,capture_output=True,timeout=60)
               print("KAGGLE_OUTPUT_LIST_FETCH_OK="+str(files.returncode==0))
