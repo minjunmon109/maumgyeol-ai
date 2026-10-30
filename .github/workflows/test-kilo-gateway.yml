@@ -1,0 +1,60 @@
+name: Validate restored Kilo Gateway site and free-model connectivity
+on:
+  push:
+    branches: [main]
+    paths:
+      - app.py
+      - index.html
+      - .github/workflows/test-kilo-gateway.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify historical Kilo mode and consent/safety constraints
+        run: |
+          python -m py_compile app.py counselor_policy.py conversation_logic.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("app.py").read_text()
+          h=Path("index.html").read_text()
+          assert 'https://ai-gateway.kilo.ai/api/v1/chat/completions' in s
+          assert 'poolside/laguna-s-2.1:free' in s
+          assert 'body.get("external_consent") is not True' in s
+          assert 'if not FIREBASE_ENABLED and not auth(' in s
+          assert 'src="/counseling-guard.js"' in h
+          assert 'guard.preflight(messages)' in h
+          assert 'guard.audit(generated,messages)' in h
+          assert 'safety:checked.safety' in h
+          assert 'voicePlayer.onPreview(evt.text)' not in h
+          assert "fetch('/api/chat/stream',req)" in h
+          print('KILO_HISTORIC_UI_AND_GUARDS=PASS')
+          PY
+      - name: Probe anonymous free Kilo model with harmless greeting only
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          python - <<'PY'
+          import json,urllib.request,urllib.error,os
+          url="https://ai-gateway.kilo.ai/api/v1/chat/completions"
+          payload={"model":"poolside/laguna-s-2.1:free","messages":[{"role":"user","content":"Hello. Reply with just OK."}],"max_tokens":16,"stream":False}
+          request=urllib.request.Request(url,json.dumps(payload).encode(),{"Content-Type":"application/json","User-Agent":"maumgyeol-probe/1.0"},method="POST")
+          status="unknown"
+          try:
+              with urllib.request.urlopen(request,timeout=28) as response:
+                  data=json.load(response)
+                  content=((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+                  status="ok" if content.strip() else "empty"
+          except urllib.error.HTTPError as exc: status="http_"+str(exc.code)
+          except Exception as exc:status="network_"+type(exc).__name__
+          print("KILO_REAL_UPSTREAM_PROBE="+status,flush=True)
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f:
+              f.write("## Kilo AI Gateway anonymous-model health\\nStatus: **"+status+"**\\n\\nA live chat has not been verified on an iPhone. Only a harmless test prompt was sent.\\n")
+          PY
