@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 8
     env:
       KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
-      KERNEL_HANDLE: huhuukgghhuu/maumgyeol-kmi-gpu-pilot
+      KERNEL_HANDLE: huhuukgghhuu/maumgyeol-t4-lora-comparison
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -46,11 +46,13 @@ jobs:
                   text=True,capture_output=True,timeout=60)
               progress=[int(n) for n in re.findall("TRAIN_PROGRESS +([0-9]+)/20",logs.stdout)]
               print("LAST_REPORTED_TRAIN_STEP="+(str(max(progress)) if progress else "NOT_REPORTED"))
+              print("GPU_EVAL_PROGRESS_MARKERS="+str(len(re.findall("EVAL_PROGRESS",logs.stdout))))
+              print("COMPARISON_FINISHED="+str("GPU_MODEL_COMPARISON_COMPLETE" in logs.stdout))
               print("TRAIN_SUCCESS_MARKER="+str("GPU PILOT SUCCESS: 20/20" in logs.stdout))
               print("KAGGLE_LOG_FETCH_OK="+str(logs.returncode==0))
               # Print only a few exception/error summaries from Kaggle logs.
               # Do not expose full private logs or any credential-bearing lines.
-              if state == "ERROR":
+              if state in {"ERROR","RUNNING"}:
                   raw = logs.stdout + "\\n" + logs.stderr
                   candidates = []
                   for line in raw.splitlines():
