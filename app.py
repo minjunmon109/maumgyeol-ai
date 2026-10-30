@@ -18,8 +18,9 @@ AUTH_SECRET = os.environ["AUTH_SECRET"]
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai").strip()
 MODEL_URL = os.getenv("MODEL_URL", "https://ai-gateway.kilo.ai/api/v1/chat/completions").strip()
 MODEL_API_KEY = os.getenv("MODEL_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "poolside/laguna-s-2.1:free").strip()
-KEYLESS_BACKEND = (MODEL_URL in ("https://api.kilo.ai/api/gateway/chat/completions", "https://ai-gateway.kilo.ai/api/v1/chat/completions") and not MODEL_API_KEY and MODEL_NAME.endswith(":free"))
+MODEL_NAME = os.getenv("MODEL_NAME", "z-ai/glm-5:free").strip()
+KILO_FREE_MODEL = (urlsplit(MODEL_URL).hostname in ("api.kilo.ai", "ai-gateway.kilo.ai") and MODEL_NAME.endswith(":free"))
+KEYLESS_BACKEND = KILO_FREE_MODEL
 FREE_EXTERNAL = bool(MODEL_URL and urlsplit(MODEL_URL).hostname not in ("localhost","127.0.0.1","::1",None))
 MODEL_SOURCE = "kilo-anonymous" if KEYLESS_BACKEND else ("ollama" if MODEL_PROVIDER == "ollama" else "custom")
 
@@ -160,7 +161,7 @@ def answer(messages, mode="auto", rehearsal=None):
         raise RuntimeError("Generative model unavailable")
     payload=build_chat_payload(messages,mode=mode,rehearsal=rehearsal)
     headers={"Content-Type":"application/json"}
-    if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
+    if MODEL_API_KEY and not KILO_FREE_MODEL: headers["Authorization"]="Bearer "+MODEL_API_KEY
     req=Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
     try:
         with urlopen(req,timeout=25) as resp:
@@ -185,7 +186,7 @@ def answer(messages, mode="auto", rehearsal=None):
 def model_stream_request(messages,mode="auto",rehearsal=None):
     payload=build_chat_payload(messages,stream=True,mode=mode,rehearsal=rehearsal)
     headers={"Content-Type":"application/json","Accept":"text/event-stream"}
-    if MODEL_API_KEY: headers["Authorization"]="Bearer "+MODEL_API_KEY
+    if MODEL_API_KEY and not KILO_FREE_MODEL: headers["Authorization"]="Bearer "+MODEL_API_KEY
     return Request(MODEL_URL,json.dumps(payload,ensure_ascii=False).encode(),headers,method="POST")
 
 
