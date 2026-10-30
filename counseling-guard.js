@@ -3,6 +3,14 @@
 (function(global){
 "use strict";
 const R={
+ // Extra paraphrases are separate so the base detectors remain stable.
+ thirdExtra:/(친구|동생|가족|엄마|아빠|지인|동급생|동료|언니|형).{0,45}(죽을\s*(거|것)|죽으려|죽겠다고|자살하겠)/i,
+ overdoseExtra:/(수면제|진통제|약|처방약).{0,35}(권장량보다|평소보다|과량|여러\s*알|세\s*배).{0,25}(먹|삼켰|복용)/i,
+ violenceExtra:/(누군가|사람|상대|친구).{0,30}(해를\s*가하|해치려|공격하|죽이려|때리려)|(해를\s*가하려|해칠\s*것\s*같).{0,35}(물건|무기|손에)/i,
+ victimExtra:/(열세|열네|열다섯)\s*살.{0,45}(맞|폭력|때리|감금|갇|문도\s*못\s*열)/i,
+ harmExtra:/(스스로.{0,10}목숨을\s*끊|오늘.{0,15}죽을\s*(거|것)|자살하겠|곧\s*스스로\s*죽)/i,
+ explicitCurrentSafety:/(?:지금은|현재는)\s*(?:안전|괜찮|자해하지\s*않|자살할\s*생각\s*없)/i,
+ historicalSelfHarm:/(?:작년|예전|과거|몇\s*년\s*전).{0,35}(?:자해|자살|스스로\s*죽)/i,
  third:/(친구|동생|가족|엄마|아빠|지인|동급생|동료|형|언니).{0,35}(자살|죽겠|죽고\s*싶|목숨.{0,6}끊|극단적\s*선택)/i,
  overdose:/(약|수면제|진통제|처방약).{0,25}(두\s*배|많이\s*(먹|삼켰)|과다\s*(복용|먹)|한꺼번에|더\s*먹|이미\s*(먹|삼켰)|용량\s*늘)/i,
  violence:/(죽이러|죽이려고|해치러|때리러|찌르러|누군가를\s*(죽|해치)|사람.{0,12}해치|몽둥이.{0,12}(찾아|가))/i,
@@ -39,11 +47,16 @@ const M=Object.freeze({
 });
 function classify(text){
  const s=String(text||"");
- if(R.third.test(s))return {type:"third",urgent:true};
- if(R.overdose.test(s))return {type:"overdose",urgent:true};
- if(R.violence.test(s))return {type:"violence",urgent:true};
- if(R.victim.test(s))return {type:"victim",urgent:true};
- if((R.harm.test(s)&&!R.negation.test(s))||R.euphemism.test(s))return {type:"harm",urgent:true};
+ if(R.third.test(s)||R.thirdExtra.test(s))return {type:"third",urgent:true};
+ if(R.overdose.test(s)||R.overdoseExtra.test(s))return {type:"overdose",urgent:true};
+ if(R.violence.test(s)||R.violenceExtra.test(s))return {type:"violence",urgent:true};
+ if(R.victim.test(s)||R.victimExtra.test(s))return {type:"victim",urgent:true};
+ const historicalAndCurrentlySafe=R.historicalSelfHarm.test(s)&&R.explicitCurrentSafety.test(s);
+ const imminent=/(오늘|지금|곧|당장|또|다시).{0,25}(죽|자해|자살|해치|끝내)/.test(s);
+ if(!historicalAndCurrentlySafe||imminent){
+  if((R.harm.test(s)||R.harmExtra.test(s))&&!R.negation.test(s)||R.euphemism.test(s))
+   return {type:"harm",urgent:true};
+ }
  return {type:"none",urgent:false};
 }
 function lastUser(history){return [...(history||[])].reverse().find(m=>m&&m.role==="user")?.content||"";}
