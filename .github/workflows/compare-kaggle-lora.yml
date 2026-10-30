@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/compare-kaggle-lora.yml
+      - training/compare_gpu_lora.py
   workflow_dispatch:
 permissions:
   contents: read
