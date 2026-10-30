@@ -223,6 +223,30 @@ UPSTREAM_ERRORS = {
 def upstream_message(status):
     return UPSTREAM_ERRORS.get(status,"외부 AI 제공업체에 요청하지 못했습니다. 관리자에게 문의해 주세요.")
 
+def report_upstream_error(exc):
+    """Only record provider HTTP code and recognized machine-readable error identifiers.
+    Never log upstream response text, user conversations, credentials or request payloads.
+    """
+    code = getattr(exc,"code",None)
+    remote_code = "unknown"
+    try:
+        response = json.loads(exc.read(4096).decode("utf-8",errors="replace"))
+        err = response.get("error",{})
+        candidate = err.get("code") if isinstance(err,dict) else None
+        if isinstance(candidate,str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,64}",candidate):
+            remote_code = candidate
+    except (ValueError,TypeError,AttributeError,UnicodeError):
+        pass
+    print("UPSTREAM_DIAGNOSTIC status="+str(code)+" reason_code="+remote_code,flush=True)
+    return remote_code
+
+def upstream_detail(status,remote_code):
+    if status==403 and remote_code in ("model_permission_blocked_org","model_permission_blocked_project","permissions_error"):
+        return "Groq에서 이 모델의 사용 권한이 차단되었습니다. Groq 콘솔의 Organization / Project → Limits → Model Permissions에서 모델 허용 여부를 확인해 주세요."
+    if status==403:
+        return "Groq 서버가 요청을 거부했습니다(403). 계정의 모델 권한, 프로젝트 제한 및 API 키 상태를 확인해 주세요."
+    return upstream_message(status)
+
 def firebase_user(authorization):
     """Server-side verification through Firebase Auth's authenticated lookup.
     The frontend can't fake membership by sending an arbitrary UID.
@@ -334,11 +358,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             response=urlopen(model_stream_request(messages,mode,rehearsal),timeout=24)
         except HTTPError as exc:
-            print("STREAM_UPSTREAM http_"+str(exc.code),flush=True)
+            remote_code=report_upstream_error(exc)
             if exc.code in (404,429,500,502,503,524,529):
                 mark_free_model_unavailable(exc)
-                return self.send(503,{"error":upstream_message(exc.code),"code":"model_unavailable"})
-            return self.send(503,{"error":upstream_message(exc.code)})
+                return self.send(503,{"error":upstream_detail(exc.code,remote_code),"code":"model_unavailable"})
+            return self.send(503,{"error":upstream_detail(exc.code,remote_code)})
         except (URLError,TimeoutError) as exc:
             print("STREAM_UPSTREAM connection_"+type(exc).__name__,flush=True)
             mark_free_model_unavailable()
@@ -452,8 +476,8 @@ class Handler(BaseHTTPRequestHandler):
         started=time.monotonic()
         try: reply,source,safety=answer(messages,mode)
         except HTTPError as exc:
-            print("FREE_QWEN_CHAT", "upstream_http_"+str(exc.code),flush=True)
-            return self.send(503,{"error":upstream_message(exc.code),"code":"model_unavailable"})
+            remote_code=report_upstream_error(exc)
+            return self.send(503,{"error":upstream_detail(exc.code,remote_code),"code":"model_unavailable"})
         except (URLError, TimeoutError) as exc:
             print("FREE_QWEN_CHAT", "connection_error_"+type(exc).__name__,flush=True)
             return self.send(503,{"error":"외부 AI 서버에 네트워크 연결이 되지 않거나 응답이 늦어졌습니다."})
