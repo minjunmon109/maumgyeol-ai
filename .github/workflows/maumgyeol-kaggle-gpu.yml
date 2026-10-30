@@ -33,8 +33,14 @@ jobs:
           python - <<'PY'
           import json, os, re
           from pathlib import Path
-          username = os.environ["KAGGLE_USERNAME"]
-          assert re.fullmatch(r"[A-Za-z0-9_-]{1,64}", username), "Invalid Kaggle username"
+          raw = os.environ["KAGGLE_USERNAME"].strip()
+          # Accept bare usernames, @username and full profile URLs.
+          username = raw.rstrip("/").split("/")[-1].lstrip("@")
+          if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", username):
+              raise SystemExit("Invalid KAGGLE_USERNAME. Use the Kaggle profile username (not email, token, or display name).")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write("KAGGLE_KERNEL_HANDLE=" + username + "/maumgyeol-kmi-gpu-pilot\\n")
+          print("Kaggle username format accepted", flush=True)
           metadata = {
             "id": f"{username}/maumgyeol-kmi-gpu-pilot",
             "title": "Maumgyeol KMI GPU Pilot",
@@ -56,11 +62,11 @@ jobs:
         run: |
           kaggle kernels push -p kaggle_job --accelerator NvidiaTeslaT4 --timeout 7200
           echo "Kaggle accepted the kernel submission; training status must be checked on Kaggle." >> "$GITHUB_STEP_SUMMARY"
-          echo "Private kernel: https://www.kaggle.com/code/${KAGGLE_USERNAME}/maumgyeol-kmi-gpu-pilot" >> "$GITHUB_STEP_SUMMARY"
+          echo "Private Kaggle kernel submitted; see your account for private execution logs." >> "$GITHUB_STEP_SUMMARY"
           echo "Kaggle may deny GPU if the account is not eligible or has no quota." >> "$GITHUB_STEP_SUMMARY"
       - name: Track Kaggle training status until terminal result
         env:
-          KERNEL_HANDLE: ${{ vars.KAGGLE_USERNAME }}/maumgyeol-kmi-gpu-pilot
+          KERNEL_HANDLE: ${{ env.KAGGLE_KERNEL_HANDLE }}
         run: |
           python - <<'PY'
           import os
@@ -91,7 +97,7 @@ jobs:
           PY
       - name: Download private experimental model outputs
         env:
-          KERNEL_HANDLE: ${{ vars.KAGGLE_USERNAME }}/maumgyeol-kmi-gpu-pilot
+          KERNEL_HANDLE: ${{ env.KAGGLE_KERNEL_HANDLE }}
         run: |
           mkdir -p kaggle_result
           kaggle kernels output "$KERNEL_HANDLE" -p kaggle_result -o
