@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>마음결 V3 · 기기 CPU 실험실</title>
+<style>
+:root{--fg:#364a38;--muted:#6f806f;--bg:#f8f9f5;--line:#dee6d9}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:var(--fg);background:var(--bg);font-size:14px;line-height:1.75}
+main{max-width:760px;margin:0 auto;padding:30px 16px 60px}
+a{color:#577855}h1{font-weight:650;font-size:clamp(24px,5vw,33px)}
+p{margin:8px 0}
+.note{padding:15px 18px;border-radius:10px;background:#fff3e9;border-left:4px solid #b86b42;margin:18px 0}
+.panel{padding:18px;border-radius:14px;border:1px solid var(--line);background:white;margin:17px 0}
+.file{display:block;padding:15px;border:1px dashed #849e80;border-radius:10px;margin:12px 0}
+input[type=file]{max-width:100%;font:inherit}
+button{font:inherit;color:#fff;background:#5d785e;border:0;padding:11px 18px;border-radius:8px;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+textarea{width:100%;min-height:85px;border:1px solid #d6dfd3;border-radius:9px;padding:12px;font:inherit;resize:vertical}
+#dialogue{display:grid;gap:10px;max-height:420px;overflow:auto}
+.line{padding:12px 14px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;background:#eef3eb}
+.line.user{background:#e7ebf6}
+.small{color:var(--muted);font-size:12px}
+#state{font-size:13px;color:#6e846e}
+footer{font-size:12px;color:var(--muted);margin-top:24px}
+</style>
+</head>
+<body>
+<main>
+<a href="/">← 마음결 메인으로</a>
+<h1>V3 · 내 기기 CPU 실험실</h1>
+<p>같은 V3 학습 가중치를 CPU용으로 변환한 GGUF 파일을 <strong>사용자 기기의 RAM</strong>에서 실행하기 위한 실험 화면이야. Render 서버에서 AI 추론하지 않아.</p>
+<div class="note"><strong>연구용 · 실제 심리상담에 사용하지 마세요.</strong>
+<p>V3는 독립 상담 안전성 시험에서 중대한 위험 대응에 실패했어. 이 화면은 모델 동작 기술 테스트만을 위한 것이고, 위기·자해·폭력 입력은 모델로 보내지 않아.</p>
+<p>지금 급박한 위기라면 한국 긴급전화 119·112, 자살예방상담전화 109를 이용해 주세요.</p></div>
+<div class="panel">
+<strong>기기 CPU 모델 준비</strong>
+<p class="small">모델이 승인된 전용 URL에 준비되면 다운로드 표시 없이 자동으로 준비할 수 있어. 현재는 GGUF 파일을 직접 선택하는 실험 모드야. 대용량 파일이므로 휴대폰에는 RAM 여유가 많이 필요해.</p>
+<label class="file">V3 CPU 모델 파일(.gguf) 선택
+<input id="file" type="file" accept=".gguf" aria-label="V3 CPU GGUF 파일 선택"></label>
+<button id="load" disabled>선택한 모델로 기기 CPU 실행</button>
+<p id="state" role="status" aria-live="polite">모델 파일을 선택하면 CPU에서만 실행할 수 있어.</p>
+</div>
+<div class="panel">
+<strong>비공개 기술 테스트</strong>
+<div id="dialogue" aria-live="polite"></div>
+<form id="chat">
+<textarea id="message" maxlength="650" placeholder="일반적인 인사나 맥락 이해 테스트만 해 주세요. 위험한 상황은 실제 사람의 도움을 먼저 받아야 합니다." required></textarea>
+<button id="send" disabled type="submit">기기 CPU로 답변 생성</button>
+</form>
+<p class="small">대화 내용은 서버에 전송하거나 저장하지 않아. 모델 파일은 기기 브라우저 메모리에서 처리해. 별도의 외부 모듈을 불러올 수 있지만 대화 내용을 API로 전송하지 않아.</p>
+</div>
+<footer>CPU/WASM 실험 · 자동 다운로드 및 설치 진행률 UI 없음 · 전문가 검증 전 모델 · 승인 없는 일반 사용자 상담 적용 금지</footer>
+</main>
+<script src="/counseling-guard.js"></script>
+<script type="module" src="/cpu-v3-lab.js"></script>
+</body>
+</html>
