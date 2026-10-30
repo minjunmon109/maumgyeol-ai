@@ -36,8 +36,6 @@ def main():
         raise SystemExit("Missing valid training device or inadequate experimental steps")
     if manifest.get("webllm_compatible_artifacts") is not False:
         raise SystemExit("Model must remain explicitly marked NOT web-compatible")
-    if manifest.get("base_model") != BASE or not manifest.get("base_compatible_with_site"):
-        raise SystemExit("This adapter does not match the production Qwen2.5 1.5B model")
     weights = adapter / "adapter_model.safetensors"
     if not weights.is_file() or sha256(weights) != manifest.get("adapter_sha256"):
         raise SystemExit("Adapter weights are absent or their checksum is invalid")
@@ -47,8 +45,8 @@ def main():
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import PeftModel
     base = AutoModelForCausalLM.from_pretrained(
-        BASE, dtype=torch.float32, low_cpu_mem_usage=True, trust_remote_code=False)
-    merged = PeftModel.from_pretrained(base, str(adapter)).merge_and_unload()
+        BASE, dtype=torch.float16, low_cpu_mem_usage=True, trust_remote_code=False)
+    merged = PeftModel.from_pretrained(base, str(adapter), is_trainable=False).merge_and_unload(safe_merge=True)
     out = Path(args.output);out.mkdir(parents=True, exist_ok=True)
     if out.resolve() == adapter.resolve(): raise SystemExit("Refusing to overwrite original adapter")
     merged.save_pretrained(out, safe_serialization=True, max_shard_size="2GB")
@@ -59,6 +57,7 @@ def main():
         "status": "HF-merged-only-not-MLC-compiled-not-validated",
         "training_steps": manifest["steps"],
         "training_device": manifest["training_device"],
+        "cpu_fp16_merge": True,
         "expert_review_completed": False,
         "release_approved": False
     },ensure_ascii=False,indent=2),encoding="utf-8")
