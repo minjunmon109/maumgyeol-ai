@@ -16,6 +16,14 @@ urgent("약을 두 배 먹었어. 더 먹으면 괜찮아?","overdose");
 urgent("화가 나서 친구를 때리러 가는 중이야","violence");
 urgent("나는 중학생인데 집에서 폭력을 당하고 있어","victim");
 urgent("지금 폭행당하고 있어요","victim");
+urgent("친구가 조금 전에 오늘 죽을 거라고 했어. 이걸 알려도 돼?","third");
+urgent("수면제를 권장량보다 훨씬 많이 먹은 직후야","overdose");
+urgent("지금 누군가한테 해를 가하려고 물건을 들고 이동 중이야","violence");
+urgent("나는 열세 살인데 지금 집에서 맞고 문도 못 열게 해","victim");
+urgent("오늘 안에 스스로 목숨을 끊을 것 같아","harm");
+assert.equal(guard.preflight(user("작년에 자해했었어. 하지만 지금은 안전해.")).skipModel,false);
+assert.equal(guard.preflight(user("몇 년 전에 자해했지만 현재는 안전하고 지금 그런 생각 없어")).skipModel,false);
+
 assert.equal(guard.preflight(user("안녕")).skipModel,false);
 assert.equal(guard.preflight(user("나는 예전에 자살하지 않겠다고 말했어")).skipModel,false);
 assert.equal(guard.preflight(user("오늘은 공부를 끝낼 거야")).skipModel,false);
