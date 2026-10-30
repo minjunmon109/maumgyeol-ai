@@ -39,6 +39,8 @@ import importlib.util
 if importlib.util.find_spec("torchao") is not None:
     raise RuntimeError("Unsupported torchao remains installed; cannot train safely")
 print("Optional torchao compatibility issue resolved", flush=True)
+print("PyTorch version:", torch.__version__, flush=True)
+print("CUDA GPU:", torch.cuda.get_device_name(0), flush=True)
 run(sys.executable, ROOT/"training/verify_training_license.py")
 run(sys.executable, ROOT/"training/train_cpu_lora.py",
     "--train", str(ROOT/"training/open_data/kmi_train_*.jsonl"),
