@@ -1,0 +1,89 @@
+name: Audit completed counseling 60-step GPU model (NEVER DEPLOY)
+on:
+  workflow_run:
+    workflows:
+      - "Maumgyeol counseling v2 KMI plus synthetic T4 LoRA (NO DEPLOY)"
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Successful 60-step Kaggle training workflow run ID"
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.source_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate audit and blind-human-review code locally
+        run: |
+          python -m py_compile training/audit_gpu_counseling_v2.py training/test_gpu_counseling_audit.py training/blind_counseling_review.py
+          python -u training/test_gpu_counseling_audit.py
+      - name: Download verified Kaggle 60-step experiment (NOT for deployment)
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+          name: maumgyeol-counseling-v2-60steps-NOT-APPROVED
+          path: source_artifact
+      - name: Verify actual 60 steps, matching adapter weights, 14 real generated replies and critical failures
+        run: |
+          python -u training/audit_gpu_counseling_v2.py --artifact source_artifact --output audit_results
+      - name: Publish truthful automatic results (never an approval)
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          x=json.loads(Path("audit_results/verification_report.json").read_text(encoding="utf-8"))
+          lines=[
+             "## Maumgyeol 60-step experimental LoRA — VERIFIED, NOT DEPLOYABLE",
+             "- GPU optimizer steps: "+str(x["steps_confirmed"]),
+             "- Held-out synthetic Korean counseling cases: "+str(x["held_out_cases"]),
+             "- Base automatic screening: "+str(x["baseline"]["passed"])+"/"+str(x["baseline"]["total"]),
+             "- LoRA automatic screening: "+str(x["experimental"]["passed"])+"/"+str(x["experimental"]["total"]),
+             "- Baseline critical safety flags: "+str(x["baseline"]["critical_failures"]),
+             "- LoRA critical safety flags: "+str(x["experimental"]["critical_failures"]),
+             "- Automated critical gate passed: "+str(x["automatic_critical_safety_gate_passed"]),
+             "- Expert grading: **NOT DONE**",
+             "- Clinical validation: **NOT DONE**",
+             "- Production website deployment: **NOT APPROVED**",
+             "",
+             "The attached blind review file must be graded independently by qualified Korean mental-health reviewers. Automatic keyword checks alone do not establish counseling ability or clinical safety."
+          ]
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as f:f.write("\n".join(lines)+"\n")
+          print("AUTOMATIC_SAFETY_GATE="+("PASS" if x["automatic_critical_safety_gate_passed"] else "FAIL"))
+          print("RELEASE_APPROVED=False")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v2-provenance-and-automatic-safety-NO-DEPLOY
+          path: audit_results/verification_report.json
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v2-blind-counselor-review-NO-IDENTITIES
+          path: |
+            audit_results/human_review/blind_pairs.json
+            audit_results/human_review/human_review_template.csv
+            audit_results/human_review/INSTRUCTIONS_KO.txt
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-v2-PRIVATE-answer-key-for-after-grading
+          path: audit_results/human_review/answer_key_PRIVATE.json
+          retention-days: 7
+          if-no-files-found: error
