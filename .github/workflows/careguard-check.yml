@@ -1,0 +1,48 @@
+name: CareGuard and counseling website regression checks (NO DEPLOY)
+on:
+  push:
+    branches: [main]
+    paths:
+      - counseling-guard.js
+      - index.html
+      - app.py
+      - tests/test_care_guard.cjs
+      - .github/workflows/careguard-check.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Parse guard and embedded website JavaScript
+        run: |
+          node --check counseling-guard.js
+          python - <<'PY'
+          from pathlib import Path
+          source=Path("index.html").read_text(encoding="utf-8")
+          marker="<script>'use strict';"
+          if source.count(marker)!=1 or source.count('<script src="/counseling-guard.js"></script>')!=1:
+              raise SystemExit("CareGuard script must load once and before inline website script")
+          code=source.split(marker,1)[1].split("</script>",1)[0]
+          Path("/tmp/maumgyeol-index-inline.js").write_text("'use strict';"+code,encoding="utf-8")
+          if not all(x in source for x in ("guard.preflight(messages)","guard.audit(generated,messages)","safety:checked.safety")):
+              raise SystemExit("The browser must intercept crises and audit output")
+          PY
+          node --check /tmp/maumgyeol-index-inline.js
+          python -m py_compile app.py counselor_policy.py conversation_logic.py
+      - name: Safety supervisor behavior (synthetic controls)
+        run: node tests/test_care_guard.cjs
+      - name: Existing website unit tests
+        env:
+          ACCESS_CODE: test-only-access
+          AUTH_SECRET: test-only-auth-secret
+        run: python -m unittest discover -s tests -p 'test_counselor_policy.py' -v
