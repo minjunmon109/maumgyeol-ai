@@ -1,6 +1,11 @@
 name: Maumgyeol free Kaggle GPU LoRA pilot (manual, NO DEPLOY)
 on:
   workflow_dispatch:
+    inputs:
+      kaggle_profile:
+        description: 'Kaggle username or profile URL (not display name, email or token)'
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -12,7 +17,7 @@ jobs:
     timeout-minutes: 135
     env:
       KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
-      KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+      KAGGLE_USERNAME: ${{ inputs.kaggle_profile || vars.KAGGLE_USERNAME }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,7 +25,7 @@ jobs:
       - name: Check Kaggle authorization without exposing credentials
         run: |
           test -n "$KAGGLE_API_TOKEN" || (echo "::error::Set KAGGLE_API_TOKEN in repository Actions secrets" && exit 1)
-          test -n "$KAGGLE_USERNAME" || (echo "::error::Set KAGGLE_USERNAME in repository Actions variables" && exit 1)
+          test -n "$KAGGLE_USERNAME" || (echo "::error::Enter Kaggle username/profile URL in Run workflow, or set KAGGLE_USERNAME variable" && exit 1)
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -37,7 +42,7 @@ jobs:
           # Accept bare usernames, @username and full profile URLs.
           username = raw.rstrip("/").split("/")[-1].lstrip("@")
           if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", username):
-              raise SystemExit("Invalid KAGGLE_USERNAME. Use the Kaggle profile username (not email, token, or display name).")
+              raise SystemExit("Kaggle display name is not the account username. Copy username from https://www.kaggle.com/<username> and supply it as the workflow input kaggle_profile.")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
               print("KAGGLE_KERNEL_HANDLE=" + username + "/maumgyeol-kmi-gpu-pilot", file=env)
           print("Kaggle username format accepted", flush=True)
