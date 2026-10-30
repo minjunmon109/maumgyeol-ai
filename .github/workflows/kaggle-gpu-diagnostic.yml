@@ -41,7 +41,7 @@ jobs:
               print("STATUS_COMMAND_RETURN_CODE="+str(result.returncode))
               print("STATUS_OUTPUT_FORMAT_VALID="+str(bool(result.stdout.strip())))
           # Logs are not printed. Only report step progress / success marker.
-          if state in {"COMPLETE","ERROR"}:
+          if state in {"COMPLETE","ERROR","RUNNING","QUEUED","PREPARING"}:
               logs=subprocess.run(["kaggle","kernels","logs",handle],
                   text=True,capture_output=True,timeout=60)
               progress=[int(n) for n in re.findall("TRAIN_PROGRESS +([0-9]+)/20",logs.stdout)]
