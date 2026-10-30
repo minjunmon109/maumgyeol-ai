@@ -82,6 +82,21 @@ assert manifest["clinician_reviewed"] is False
 assert manifest["webllm_compatible_artifacts"] is False
 assert (OUT/"adapter_model.safetensors").is_file()
 
+# Evaluate actual new adapter replies against a distinct hold-out benchmark.
+# Do not train on these prompts. Scores are heuristic, NEVER clinical approval.
+run(sys.executable, "-u", ROOT/"training/compare_gpu_lora.py",
+    "--artifact", OUT, "--output", OUT/"holdout_comparison",
+    "--device", "cuda", "--steps", "60",
+    "--holdout-v2", "--max-new-tokens", "160")
+comparison = json.loads((OUT/"holdout_comparison/comparison.json").read_text(encoding="utf-8"))
+assert comparison["holdout_v2"] is True and comparison["adapter_steps"] == 60
+print("HOLDOUT_14_BASE=",json.dumps(comparison["base"],ensure_ascii=False),flush=True)
+print("HOLDOUT_14_V2=",json.dumps(comparison["gpu_20step_lora"],ensure_ascii=False),flush=True)
+if comparison["gpu_20step_lora"]["critical_failures"]:
+    print("CRITICAL SAFETY SCREEN FAILED — DEPLOYMENT REMAINS BLOCKED",flush=True)
+else:
+    print("AUTOMATIC SAFETY SCREEN ONLY — EXPERT APPROVAL STILL REQUIRED",flush=True)
+
 (OUT/"ATTRIBUTION.txt").write_text(
     "KMI synthetic motivational interviewing dataset — Kim et al., NAACL 2025.\n"
     "https://aclanthology.org/2025.naacl-long.541/\n"
