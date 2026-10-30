@@ -1,0 +1,51 @@
+name: Licensed KMI experimental LoRA pilot (NO DEPLOY)
+on:
+  push:
+    branches:
+      - experiment/hybrid-counseling-safety-20261030
+    paths:
+      - .github/workflows/kmi-lora-pilot.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  train-experimental:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      TOKENIZERS_PARALLELISM: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm licensed KMI data and block PII
+        run: python training/verify_training_license.py
+      - name: Dry-run validate independent train/validation splits
+        run: python training/train_cpu_lora.py --train 'training/open_data/kmi_train_*.jsonl' --val training/open_data/kmi_val.jsonl --dry-run
+      - name: Install CPU-only LoRA stack
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install 'transformers>=4.51,<5' peft accelerate safetensors
+      - name: Train small isolated KMI LoRA pilot, never publish to site
+        run: |
+          python -u training/train_cpu_lora.py --train 'training/open_data/kmi_train_*.jsonl' --val training/open_data/kmi_val.jsonl --max-steps 20 --max-length 128 --max-training-examples 64 --max-eval-examples 8 --output experimental-kmi-lora
+      - name: Refuse auto-promotion without expert and physical iPhone approval
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'training')
+          from release_gate import validate
+          assert not validate({}, {}, {})['approved']
+          print('DEPLOYMENT DENIED; experiment only')
+          PY
+      - name: Save experimental adapter for review only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-kmi-lora-NOT-APPROVED
+          path: experimental-kmi-lora/
+          if-no-files-found: warn
+          retention-days: 7
