@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - experiment/hybrid-counseling-safety-20261030
+    paths:
+      - training/hybrid_cases.jsonl
+      - training/run_hybrid_candidates.py
+      - training/hybrid_safety_eval.py
+      - .github/workflows/hybrid-smoke.yml
   workflow_dispatch:
 permissions:
   contents: read
