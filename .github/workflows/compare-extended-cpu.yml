@@ -1,0 +1,99 @@
+name: 100-step CPU LoRA comparison (non-clinical, no deployment)
+on:
+  push:
+    branches: [next-stage-cpu-evaluation-20261030]
+    paths:
+      - training/compare_model_audits.py
+      - training/response_signal_checks.py
+      - tests/test_compare_model_audits.py
+      - .github/workflows/compare-extended-cpu.yml
+  pull_request:
+    paths:
+      - training/compare_model_audits.py
+      - training/response_signal_checks.py
+      - tests/test_compare_model_audits.py
+      - .github/workflows/compare-extended-cpu.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read
+jobs:
+  compare-code-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify evaluation code and fail-closed safeguards
+        run: |
+          python -m py_compile training/compare_model_audits.py training/response_signal_checks.py
+          python -m unittest discover -s tests -p 'test_*.py'
+      - name: Confirm existing website release remains inactive
+        run: |
+          python - <<'PY'
+          import json
+          release=json.load(open('model-release.json',encoding='utf-8'))
+          assert release.get('active') is False, "Unreviewed model release activated"
+          print('Release remains inactive, no clinical review fabricated.')
+          PY
+
+  compare-100step-trained-model:
+    # Only run after GitHub run 40973308830 produces a real verified adapter.
+    # Run once on this exact user-requested evaluation commit; never run on PRs or routine pushes.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'Run verified 100-step counselor answer comparison')
+    needs: [compare-code-tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HOME: /tmp/maumgyeol-hf
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU inference dependencies
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r training/requirements-cpu.txt
+      - name: Retrieve actual 100-step unvalidated training artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: maumgyeol-qwen25-1p5b-kmi-100steps-unvalidated
+          path: training/outputs/kmi-qwen25-cpu-extended
+          github-token: ${{ github.token }}
+          run-id: 40973308830
+      - name: Verify provenance and exactly 100 CPU gradient steps
+        run: |
+          python training/verify_cpu_training.py \
+            --output training/outputs/kmi-qwen25-cpu-extended --expected-steps 100
+      - name: Real deterministic baseline model generations
+        run: |
+          python -u training/generate_cpu_eval.py \
+            --max-new-tokens 110 \
+            --output training/outputs/compare100/baseline_generations.jsonl
+      - name: Real deterministic extended LoRA generations
+        run: |
+          python -u training/generate_cpu_eval.py \
+            --max-new-tokens 110 \
+            --adapter training/outputs/kmi-qwen25-cpu-extended \
+            --output training/outputs/compare100/candidate_generations.jsonl
+      - name: Compare evidence; do not authorize deployment
+        run: |
+          python -u training/compare_model_audits.py \
+            --baseline training/outputs/compare100/baseline_generations.jsonl \
+            --candidate training/outputs/compare100/candidate_generations.jsonl \
+            --adapter training/outputs/kmi-qwen25-cpu-extended \
+            --min-steps 100 --output training/outputs/compare100/reports
+      - name: Preserve synthetic case outputs and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maumgyeol-100step-real-model-audit-NOT-CLINICAL
+          path: training/outputs/compare100/
+          retention-days: 14
+          if-no-files-found: warn
