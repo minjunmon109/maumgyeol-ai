@@ -1,5 +1,0 @@
-{
-  "schema": 1,
-  "active": false,
-  "reason": "No professionally reviewed CPU-trained WebGPU model approved for production. Keep current base model."
-}
