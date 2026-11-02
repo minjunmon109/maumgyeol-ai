@@ -28,14 +28,15 @@
 .scene::before,.scene::after{content:"";position:absolute;inset:auto;pointer-events:none;z-index:1;border-radius:50%;filter:blur(10px)}
 .scene::before{width:420px;height:420px;left:-120px;top:-120px;background:radial-gradient(circle,#ae75ff26 0%,#885dff12 35%,transparent 70%);animation:orbFloatA 11s ease-in-out infinite alternate}
 .scene::after{width:480px;height:480px;right:-140px;bottom:-170px;background:radial-gradient(circle,#6fd4ff20 0%,#5ab8ff0f 34%,transparent 72%);animation:orbFloatB 14s ease-in-out infinite alternate}
-.scene-bg{transform:translate3d(calc(var(--mx)*.012),calc(var(--my)*.012),0) scale(1.045);transition:transform .35s ease-out,filter .35s ease-out;filter:contrast(1.085) saturate(1.12) brightness(1.035)}
+.scene-bg{transform:translate3d(calc(var(--mx)*.012),calc(var(--my)*.012),0) scale(1.045);transition:transform .35s ease-out,filter .35s ease-out;filter:none}
 .scene.active .scene-bg{animation:bgBreath 10s ease-in-out infinite alternate}
 .scene-bg::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 0 18%,#ffffff10 24%,transparent 31%,transparent 64%,#f3a6ff0b 73%,transparent 80%);mix-blend-mode:screen;opacity:.9;animation:sheenSweep 12s linear infinite}
-.character-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;background-repeat:no-repeat;background-size:100% 100%;background-position:center;mix-blend-mode:normal;opacity:.76;transform-origin:center center;animation:charAlive 6.8s ease-in-out infinite alternate;will-change:transform,opacity}
-.character-layer::before{content:"";position:absolute;inset:0;background:linear-gradient(125deg,transparent 20%,#d9d4ff18 46%,transparent 58%);mask-image:radial-gradient(ellipse 24% 32% at 46% 38%,#000 38%,transparent 75%);animation:hairShimmer 9s ease-in-out infinite alternate;mix-blend-mode:screen}
-.lobby-character{background-image:url('assets/lobby.webp');mask-image:radial-gradient(ellipse 25% 34% at 45% 33%,#000 25%,#0009 53%,transparent 80%)}
-.select-character{background-image:url('assets/select.webp');mask-image:radial-gradient(ellipse 24% 28% at 68% 33%,#000 20%,#000a 56%,transparent 83%)}
-.result-character{background-image:url('assets/result.webp');mask-image:radial-gradient(ellipse 26% 45% at 86% 46%,#000 15%,#000b 54%,transparent 83%)}
+/* Pre-composited character overlays: unchanged 1536px artwork, smaller GPU textures, no full-stage dynamic masks. */
+.character-layer{position:absolute;pointer-events:none;z-index:2;background-repeat:no-repeat;background-size:100% 100%;background-position:center;opacity:.76;transform-origin:center center;animation:charAlive 6.8s ease-in-out infinite alternate}
+.character-layer::before{content:"";position:absolute;inset:0;background:linear-gradient(125deg,transparent 20%,#d9d4ff18 46%,transparent 58%);animation:hairShimmer 9s ease-in-out infinite alternate;mix-blend-mode:screen}
+.lobby-character{left:383px;top:49px;width:618px;height:474px;background-image:url('assets/lobby-character.webp')}
+.select-character{left:737px;top:83px;width:616px;height:406px;background-image:url('assets/select-character.webp')}
+.result-character{left:989px;top:74px;width:547px;height:648px;background-image:url('assets/result-character.webp')}
 .scene-enter .scene-bg,.scene-enter .character-layer{animation:sceneZoomIn .65s cubic-bezier(.18,.88,.24,1.02) both}
 .scene-enter .lobby-bottom,.scene-enter .select-tabs,.scene-enter .song-list,.scene-enter .details-dynamic,.scene-enter .select-top-actions,.scene-enter .select-bottom-actions,.scene-enter .game-btn,.scene-enter .game-hints,.scene-enter .result-dynamic,.scene-enter .result-controls{animation:panelRise .72s cubic-bezier(.18,.88,.24,1.04) both}
 .scene-enter .song-list{animation-delay:.08s}.scene-enter .details-dynamic{animation-delay:.12s}.scene-enter .result-controls,.scene-enter .select-bottom-actions{animation-delay:.14s}
@@ -117,6 +118,21 @@ button.pressed,.interactive-press.pressed{animation:pressPop .26s ease}
 @keyframes rotationHint{0%{transform:rotate(-15deg)}100%{transform:rotate(38deg)}}
 @media (orientation:portrait) and (max-width:900px){#portraitHint{display:flex}}
 @media (prefers-reduced-motion:reduce){#portraitHint .rotateGlyph{animation:none}}
+
+/* IOS_GPU_MEMORY_STABILITY_V3 — full-resolution art and visual effects retained */
+.scene{contain:layout paint style}
+.scene.sleeping{content-visibility:hidden!important;visibility:hidden!important;pointer-events:none!important}
+.scene.sleeping,.scene.sleeping *,.scene.sleeping::before,.scene.sleeping::after{animation-play-state:paused!important}
+.scene:not(.active) .character-layer,.scene:not(.active) .ambient-particles{visibility:hidden}
+@media(pointer:coarse){
+  /* No full-frame Safari filter animation on startup; quality and motion stay intact. */
+  .scene.active{animation:none}
+  .scene-enter .scene-bg{animation:mobileSceneIn .55s cubic-bezier(.2,.8,.2,1) both}
+  .scene-bg{filter:none!important}
+  #stage::before{mix-blend-mode:normal}
+}
+@keyframes mobileSceneIn{from{opacity:.65;transform:scale(1.09)}to{opacity:1;transform:scale(1.052)}}
+
 </style>
 </head>
 <body>
@@ -185,7 +201,17 @@ const fmtNum=n=>Math.round(n).toLocaleString('en-US');
 const toast=(msg)=>{const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),3300)};
 function fitStage(){const w=innerWidth,h=innerHeight;const scale=Math.min(w/1536,h/864);document.documentElement.style.setProperty('--stage-scale',String(scale))}
 addEventListener('resize',fitStage,{passive:true});fitStage();
-function switchScene(to){if(scene===to)return;$$('.scene').forEach(el=>el.classList.toggle('active',el.id===to));scene=to;stage.dataset.screen=to;adjustMenuMusic(to);sceneIntro(to);if(to==='select'){renderSongs();renderDetails()}if(to==='play'){lastRender=performance.now();loop()}else{cancelAnimationFrame(animationId)}}
+let sleepTimer=0;
+function switchScene(to){
+ if(scene===to)return;
+ clearTimeout(sleepTimer);
+ const scenes=$$('.scene');
+ scenes.forEach(el=>{el.classList.remove('sleeping');el.classList.toggle('active',el.id===to)});
+ scene=to;stage.dataset.screen=to;adjustMenuMusic(to);sceneIntro(to);if(to!=='play')startAmbient();
+ sleepTimer=setTimeout(()=>scenes.forEach(el=>{if(!el.classList.contains('active'))el.classList.add('sleeping')}),540);
+ if(to==='select'){renderSongs();renderDetails()}
+ if(to==='play'){lastRender=performance.now();loop()}else{cancelAnimationFrame(animationId)}
+}
 function showModal(id){$('#'+id).classList.add('show')}
 function closeModals(){if(gameState==='paused'&&scene==='play')return;$$('.modal-layer').forEach(el=>el.classList.remove('show'))}
 function openImport(){if(importBusy)return;$('#progressGroup').hidden=true;showModal('importModal')}
@@ -392,31 +418,32 @@ function sceneIntro(id){
  setTimeout(()=>el.classList.remove('scene-enter'),850);
 }
 function installParallax(){
- let tx=0,ty=0,cx=0,cy=0,raf=0;
- const update=()=>{
-  cx+=(tx-cx)*0.08; cy+=(ty-cy)*0.08;
-  stage.style.setProperty('--mx',cx.toFixed(2)+'px');
-  stage.style.setProperty('--my',cy.toFixed(2)+'px');
-  raf=requestAnimationFrame(update);
- };
- stage.addEventListener('pointermove',e=>{
-  const r=stage.getBoundingClientRect();
-  const nx=((e.clientX-r.left)/r.width-.5), ny=((e.clientY-r.top)/r.height-.5);
-  tx=nx*38; ty=ny*28;
- },{passive:true});
- stage.addEventListener('pointerleave',()=>{tx=0;ty=0;},{passive:true});
- if(!raf) raf=requestAnimationFrame(update);
+ /* iOS stability: do not mutate root CSS variables continuously while a screen is idle. */
+ const coarse=matchMedia('(pointer:coarse)').matches;
+ let mx=0,my=0,queued=false;
+ function flush(){queued=false;stage.style.setProperty('--mx',mx.toFixed(2)+'px');stage.style.setProperty('--my',my.toFixed(2)+'px')}
+ function schedule(){if(!queued){queued=true;requestAnimationFrame(flush)}}
+ if(!coarse){
+  stage.addEventListener('pointermove',e=>{
+   if(scene==='play')return;
+   const r=stage.getBoundingClientRect();
+   mx=((e.clientX-r.left)/r.width-.5)*38;
+   my=((e.clientY-r.top)/r.height-.5)*28;
+   schedule();
+  },{passive:true});
+  stage.addEventListener('pointerleave',()=>{mx=0;my=0;schedule()},{passive:true});
+ }
 }
 function applyQualityBoost(){
- document.querySelectorAll('.scene-bg').forEach(bg=>bg.style.willChange='transform,filter');
- document.querySelectorAll('.character-layer').forEach(ch=>ch.style.willChange='transform,opacity');
+ document.querySelectorAll('.scene-bg').forEach(bg=>bg.style.willChange='auto');
+ document.querySelectorAll('.character-layer').forEach(ch=>ch.style.willChange='auto');
 }
 
 
 /* ── MENU MUSIC SYSTEM: ORIGINAL ROYALTY-FREE LOOP, AUDIO POLICY SAFE ── */
 const musicState={enabled:store.get('menuMusic',true),started:false,playing:false};
 const menuTheme=new Audio('assets/menu-theme.mp3');
-menuTheme.loop=true;menuTheme.preload='auto';menuTheme.volume=0;
+menuTheme.loop=true;menuTheme.preload='metadata';menuTheme.volume=0;
 let musicFadeId=0;
 function updateMusicUI(){
  const b=$('#musicToggle'); if(!b)return;
@@ -465,7 +492,8 @@ function uiClickTone(){
 }
 /* ── ANIMATED SHADER PARTICLES ── */
 const particleScenes=['lobby','select','result'];
-const particleCvs={};let particleRAF=0,particleLast=0;
+const particleCvs={};let particleRAF=0,particleLast=0,ambientRender=null;
+function startAmbient(){if(!particleRAF&&ambientRender&&!document.hidden&&scene!=='play')particleRAF=requestAnimationFrame(ambientRender)}
 function initAmbient(){
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  for(const id of particleScenes){
@@ -478,22 +506,33 @@ function initAmbient(){
    });
    particleCvs[id]={canvas:c,ctx:c.getContext('2d',{alpha:true,desynchronized:true}),pts};
  }
+ /* Cached glow sprites have the same soft sparkle but avoid per-particle shadow filters. */
+ const spriteCache={};
+ for(const color of ['#f4b7ff','#a6d8ff','#ffffff']){
+  const c=document.createElement('canvas');c.width=36;c.height=36;
+  const g=c.getContext('2d');const grad=g.createRadialGradient(18,18,0,18,18,17);
+  grad.addColorStop(0,'#ffffff');grad.addColorStop(.13,color);grad.addColorStop(.36,color+'88');grad.addColorStop(1,'#ffffff00');
+  g.fillStyle=grad;g.fillRect(0,0,36,36);spriteCache[color]=c;
+ }
  const render=(t)=>{
-   particleRAF=requestAnimationFrame(render);
-   if(document.hidden||scene==='play'||t-particleLast<32)return;
-   particleLast=t;
-   const entry=particleCvs[scene];if(!entry)return;
-   const {ctx,pts}=entry;
-   ctx.clearRect(0,0,1536,864);
-   for(const p of pts){
-     const tw=.4+.6*(.5+.5*Math.sin(t*.0015+p.phase));
-     const x=p.x+Math.sin(t*.0002+p.phase)*5; const y=((p.y-(t*.001*p.spd))%900+900)%900-20;
-     ctx.globalAlpha=.1+.25*tw;ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.r*8;
-     ctx.beginPath();ctx.arc(x,y,p.r*(.6+tw*.7),0,Math.PI*2);ctx.fill();
-   }
-   ctx.globalAlpha=1;ctx.shadowBlur=0;
+  if(document.hidden||scene==='play'){particleRAF=0;return}
+  particleRAF=requestAnimationFrame(render);
+  if(t-particleLast<39)return;
+  particleLast=t;
+  const entry=particleCvs[scene];if(!entry)return;
+  const {ctx,pts}=entry;ctx.clearRect(0,0,1536,864);
+  for(const p of pts){
+   const tw=.4+.6*(.5+.5*Math.sin(t*.0015+p.phase));
+   const x=p.x+Math.sin(t*.0002+p.phase)*5;
+   const y=((p.y-(t*.001*p.spd))%900+900)%900-20;
+   const size=(10+p.r*7)*(.7+tw*.3);
+   ctx.globalAlpha=.11+.3*tw;
+   ctx.drawImage(spriteCache[p.color],x-size/2,y-size/2,size,size);
+  }
+  ctx.globalAlpha=1;
  };
- if(!particleRAF)particleRAF=requestAnimationFrame(render);
+ ambientRender=render;
+ startAmbient();
 }
 function bootAudioVisual(){
  $('#portraitSkip').addEventListener('click',()=>$('#portraitHint').classList.add('dismissed'));
@@ -501,7 +540,7 @@ function bootAudioVisual(){
  $('#musicToggle').addEventListener('click',()=>{uiClickTone();toggleMenuMusic()});
  document.addEventListener('pointerdown',enableMenuMusicWithGesture,{passive:true});
  document.addEventListener('keydown',enableMenuMusicWithGesture,{passive:true});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseMenuMusic();else if(scene!=='play'&&musicState.enabled&&musicState.started)startMenuMusic()});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){pauseMenuMusic();if(particleRAF){cancelAnimationFrame(particleRAF);particleRAF=0}}else{startAmbient();if(scene!=='play'&&musicState.enabled&&musicState.started)startMenuMusic()}});
  initAmbient();stage.dataset.screen=scene;
 }
 
@@ -511,7 +550,7 @@ $$('[data-filter]').forEach(el=>el.addEventListener('click',()=>selectFilter(el.
 $$('[data-difficulty]').forEach(el=>el.addEventListener('click',()=>{difficulty=el.dataset.difficulty;renderDetails()}));
 for(const [id,key,label,format] of [['volume','volume','volumeVal',v=>v+'%'],['noteSpeed','speed','speedVal',v=>Number(v).toFixed(2)+'×'],['offset','offset','offsetVal',v=>v+' ms'],['effects','effects','effectsVal',v=>v+'%']]){$('#'+id).addEventListener('input',e=>{settings[key]=Number(e.target.value);$('#'+label).textContent=format(settings[key]);store.set(key,settings[key]);if(key==='volume'&&gain)gain.gain.value=settings.volume/100})}
 addEventListener('unhandledrejection',e=>{console.error('Unhandled error',e.reason);toast('오류가 발생했습니다. 다른 오디오 파일로 다시 시도해 주세요.')});
-enhanceButtons();installParallax();applyQualityBoost();bootAudioVisual();sceneIntro('lobby');renderSongs();renderDetails();
+enhanceButtons();installParallax();applyQualityBoost();$$('.scene:not(.active)').forEach(el=>el.classList.add('sleeping'));bootAudioVisual();sceneIntro('lobby');renderSongs();renderDetails();
 </script>
 </body>
 </html>
