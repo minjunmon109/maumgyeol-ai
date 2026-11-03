@@ -71,7 +71,7 @@ transform:skewX(-9deg);box-shadow:0 0 18px #327ff149;pointer-events:none;overflo
 :fullscreen #viewport,:-webkit-full-screen #viewport{inset:0;width:100%;height:100%}
 html:fullscreen,html:-webkit-full-screen{background:#010108}
 </style></head>
-<body><button id="astra-fullscreen" type="button" aria-label="전체 화면 켜기" aria-pressed="false" title="전체 화면 켜기 (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div id="astra-fs-toast" role="status" aria-live="polite"></div><div id="astra-orientation-tip">⟳ 가로로 돌리면 게임 화면이 더 크게 표시돼요</div><main id="viewport"><div id="stage">
+<body><button id="astra-fullscreen" type="button" aria-label="전체 화면 켜기" aria-pressed="false" title="전체 화면 켜기 (Alt+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div id="astra-fs-toast" role="status" aria-live="polite"></div><div id="astra-orientation-tip">⟳ 가로로 돌리면 게임 화면이 더 크게 표시돼요</div><main id="viewport"><div id="stage">
   <div id="transition" aria-hidden="true"></div>
   <section class="screen active" id="view-lobby" aria-label="로비">
     <div class="lobby-back"></div><div class="lobby-character" id="lobby-character"></div>
@@ -780,7 +780,7 @@ bindUI();
  let simulated=false,toastHandle=null;
  const nativeActive=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
  function notify(msg){toast.textContent=msg;toast.classList.add('visible');clearTimeout(toastHandle);toastHandle=setTimeout(()=>toast.classList.remove('visible'),3400)}
- function sync(){let active=nativeActive()||simulated;btn.dataset.active=String(active);btn.setAttribute('aria-pressed',String(active));btn.setAttribute('aria-label',active?'전체 화면 끄기':'전체 화면 켜기');btn.title=active?'전체 화면 끄기 (F)':'전체 화면 켜기 (F)';btn.querySelector('svg').innerHTML=active?iconExit:iconEnter;window.dispatchEvent(new Event('resize'))}
+ function sync(){let active=nativeActive()||simulated;btn.dataset.active=String(active);btn.setAttribute('aria-pressed',String(active));btn.setAttribute('aria-label',active?'전체 화면 끄기':'전체 화면 켜기');btn.title=active?'전체 화면 끄기 (Alt+Enter)':'전체 화면 켜기 (Alt+Enter)';btn.querySelector('svg').innerHTML=active?iconExit:iconEnter;window.dispatchEvent(new Event('resize'))}
  async function toggle(){
   if(nativeActive()){
    try{if(document.exitFullscreen)await document.exitFullscreen();else if(document.webkitExitFullscreen)document.webkitExitFullscreen();}catch(e){notify('전체 화면 종료가 제한됐어요. ESC 키를 눌러주세요.')}sync();return;
@@ -799,7 +799,7 @@ bindUI();
  btn.addEventListener('click',toggle);
  document.addEventListener('fullscreenchange',()=>{simulated=false;sync()});
  document.addEventListener('webkitfullscreenchange',()=>{simulated=false;sync()});
- document.addEventListener('keydown',e=>{if(e.code==='KeyF'&&!e.repeat&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLSelectElement)){e.preventDefault();toggle()}});
+ document.addEventListener('keydown',e=>{if(e.code==='Enter'&&e.altKey&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLSelectElement)){e.preventDefault();toggle()}});
  window.addEventListener('orientationchange',()=>{sync();setTimeout(sync,350)});
  sync();
 })();
