@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0d16">
+<title>LUMIA OMNI — AI Workspace</title>
+<style>
+:root{color-scheme:dark;--bg:#0a0d16;--side:#111625;--panel:#161c2e;--border:#2b3449;--white:#edf2ff;--muted:#9da9c3;--purple:#8d8cfa;--cyan:#83e2dd}
+*{box-sizing:border-box}body,html{margin:0;width:100%;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:var(--bg);color:var(--white)}button,select,input,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.52;cursor:wait}a{color:#b2bbff}::selection{background:#5b65ac}
+.app{height:100dvh;display:grid;grid-template-columns:245px 1fr;overflow:hidden;background:radial-gradient(900px 550px at 70% -20%,#30396057,transparent),var(--bg)}
+aside{background:#111624;border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0;z-index:10}
+.logo{font-size:14px;letter-spacing:.15em;font-weight:900;display:flex;align-items:center;gap:11px;margin:24px 19px}.mark{width:38px;height:38px;border-radius:13px;background:linear-gradient(130deg,#7888ff,#a186f4 55%,#75e5dc);display:grid;place-items:center;font-size:23px;color:white;box-shadow:0 6px 30px #8d86f04b}
+.logo small{font-size:9px;font-weight:600;display:block;margin-top:4px;color:#7c8dae;letter-spacing:.21em}
+.sidebtn{border:1px solid #475073;background:#232941;padding:13px;margin:0 12px;border-radius:12px;color:#e7edff;text-align:left;font-weight:700;font-size:13px}.sidebtn:hover,.item:hover{background:#2c3651}
+.hint{font-size:10px;color:#7182a3;letter-spacing:.16em;font-weight:800;padding:27px 20px 10px}
+#history{overflow-y:auto;flex:1;padding:0 11px}.item{border:0;background:transparent;text-align:left;color:#bdc9e0;display:block;border-radius:8px;padding:11px 10px;margin:3px 0;width:100%;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item.active{background:#252e46;color:white}
+.sidefoot{border-top:1px solid var(--border);padding:13px}.sidefoot button{border:0;background:none;color:#9aaacc;padding:9px;width:100%;text-align:left;font-size:12px}.sidefoot button:hover{color:white}.status{font-size:11px;color:#94a5c4;padding:11px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#ffca81;margin-right:7px}.dot.ready{background:#6ee4b3}
+main{min-width:0;display:flex;flex-direction:column}.top{height:70px;padding:0 25px;border-bottom:1px solid #273049;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#1115229a;backdrop-filter:blur(10px)}
+.topTitle{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tools{display:flex;align-items:center;gap:8px}
+select{max-width:230px;padding:10px;border-radius:10px;border:1px solid #39435f;color:#e4e9ff;background:#1d2539;font-size:12px}
+.icon{border:1px solid #3c4660;border-radius:10px;background:#222b40;color:white;padding:10px;font-size:13px}
+#menu{display:none}.tabs{display:flex;gap:9px;padding:13px 25px 0}.tab{padding:10px 15px;background:none;border:1px solid transparent;border-radius:10px;color:#8596b5;font-weight:700;font-size:12px}.tab.active{color:white;border-color:#3d4962;background:#20293e}
+#chatpane{display:flex;flex-direction:column;min-height:0;flex:1}.scroll{overflow-y:auto;flex:1;min-height:0}.inner{width:min(840px,100%);margin:auto;padding:24px 24px 35px}
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 315px);text-align:center}.wmark{width:74px;height:74px;border:1px solid #485987;background:linear-gradient(135deg,#28345f,#172039);border-radius:23px;display:grid;place-items:center;font-size:40px;margin-bottom:21px;box-shadow:0 0 60px #7278e635}
+.welcome h1{font-size:clamp(24px,4vw,38px);line-height:1.2;letter-spacing:-.055em;margin:0}.gradient{background:linear-gradient(100deg,#a7b7ff,#ab89ef,#7fe6d8);background-clip:text;color:transparent}.welcome p{color:#96a5bd;font-size:13px;line-height:1.9;margin:16px 0 29px}
+.prompts{display:grid;grid-template-columns:1fr 1fr;gap:9px;width:min(630px,100%)}.promptcard{padding:15px;border-radius:13px;background:#181f31;border:1px solid #303c55;color:#ccd5e7;text-align:left;font-size:12px;line-height:1.65}.promptcard strong{display:block;color:white;font-size:13px;margin-bottom:5px}.promptcard:hover{border-color:#8b96ed}
+.msg{display:flex;gap:13px;margin-bottom:25px}.avatar{width:33px;height:33px;border-radius:10px;display:grid;place-items:center;flex:none;background:#353e58;font-size:13px;font-weight:900}.avatar.ai{background:linear-gradient(135deg,#647ad8,#986dd5)}
+.msgcontent{min-width:0;flex:1}.who{color:#cbd5ed;font-size:12px;font-weight:800;margin:5px 0 10px}.words{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.86;color:#e0e6f5}.copy{color:#8496ba;background:none;border:0;padding:9px 0;font-size:11px}
+.composerArea{padding:10px 20px max(16px,env(safe-area-inset-bottom));background:linear-gradient(0deg,#0a0d16 76%,transparent)}.composer{max-width:835px;margin:auto;background:#192133;border:1px solid #48526d;border-radius:18px;overflow:hidden;box-shadow:0 14px 40px #0005}
+.composer:focus-within{border-color:#7e8bd8}textarea{font:inherit;color:white;outline:none}
+#prompt{width:100%;border:0;resize:none;min-height:68px;max-height:170px;background:transparent;font-size:14px;padding:18px;line-height:1.6}
+#prompt::placeholder{color:#7b8aaa}.composerbar{display:flex;align-items:center;justify-content:space-between;padding:0 12px 11px}.composerbar button{border:0;border-radius:10px;padding:9px 12px;background:#27314a;color:#c5d2ef;font-size:12px}.composerbar button:hover{background:#334061}.composerbar .send{color:white;font-size:20px;font-weight:900;background:linear-gradient(130deg,#7180f3,#a17deb);width:40px;height:40px;padding:0}
+#attachments{display:flex;gap:7px;flex-wrap:wrap;padding:10px 12px 0}#attachments:empty{display:none}.chip{border:1px solid #455474;background:#27314a;padding:7px 10px;border-radius:8px;font-size:11px;color:#bdcaed}
+.note{font-size:10px;text-align:center;color:#6b7b9b;margin-top:11px}
+#maker{display:none;flex:1;overflow-y:auto}.makerInner{max-width:920px;margin:auto;padding:33px 25px 70px}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.18em;color:#a3a9f8}.makerInner h2{margin:10px 0;font-size:clamp(26px,4vw,34px);letter-spacing:-.05em}.desc{color:#9aa8c0;font-size:13px;line-height:1.8;margin-bottom:25px}
+.kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}.kind{min-width:0;text-align:center;border:1px solid #38445e;border-radius:13px;background:#1a2133;color:#d5def1;padding:16px 9px}.kind strong{display:block;margin:6px 0;font-size:12px}.kind small{font-size:10px;color:#899abb}.kind i{font-size:25px;font-style:normal}.kind.active{border-color:#9eabff;background:#2b3155;box-shadow:0 0 0 1px #6675b851}
+.editor{padding:22px;background:#171e2f;border:1px solid #354159;border-radius:17px}.fieldtitle{font-size:13px;font-weight:800;margin-bottom:12px}.editor textarea{resize:vertical;width:100%;height:170px;line-height:1.7;background:#101625;padding:14px;border:1px solid #39445d;border-radius:10px;font-size:13px}
+.editor textarea:focus{border-color:#a1aafa}.makebtn{background:linear-gradient(120deg,#667bf1,#997cf2);color:white;font-size:13px;font-weight:800;padding:13px 20px;border:0;border-radius:10px;margin-top:15px}
+#result{padding-top:20px}.fileResult{border:1px solid #465578;border-radius:12px;padding:15px;background:#1c2842;display:flex;justify-content:space-between;align-items:center;gap:10px}.fileResult button{padding:9px 13px;background:#7b84f3;border:0;border-radius:9px;color:white;font-weight:800;font-size:12px}
+#previewWrap{display:none;margin-top:17px;border:1px solid #3f4a62;border-radius:13px;overflow:hidden}#previewWrap header{background:#222b43;padding:9px 14px;font-size:12px;color:#bec8e3}#preview{border:0;width:100%;height:420px;background:white}
+.modalcover{position:fixed;inset:0;background:#03060bc9;backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:18px;z-index:30}.modalcover.on{display:flex}.modal{border:1px solid #444f72;background:#1c253a;border-radius:20px;padding:27px;width:min(420px,100%);box-shadow:0 30px 100px #0009}.modal h2{margin:0;font-size:21px}.modal p{color:#aeb9d3;font-size:13px;line-height:1.8}.modal input{width:100%;border:1px solid #465273;border-radius:11px;padding:13px;background:#0f1626;color:white}.modal button{width:100%;border:none;border-radius:10px;background:#7a84ec;color:white;margin-top:13px;padding:12px;font-weight:800}.err{color:#f8a2b6;font-size:12px;white-space:pre-wrap;line-height:1.6}
+@media(max-width:770px){.app{grid-template-columns:1fr}aside{position:fixed;top:0;bottom:0;left:0;width:255px;transform:translateX(-101%);transition:.2s;box-shadow:30px 0 80px #0009}aside.open{transform:translateX(0)}#menu{display:block}.top{padding:0 13px}.topTitle{max-width:115px}.tools select{max-width:155px}.tabs{padding:12px 12px 0}.inner{padding:19px 15px 28px}.welcome{min-height:calc(100dvh - 285px)}.prompts{grid-template-columns:1fr}.composerArea{padding-left:10px;padding-right:10px}.makerInner{padding:23px 13px 65px}.kinds{grid-template-columns:repeat(2,1fr)}.editor{padding:15px}.fileResult{align-items:flex-start;flex-direction:column}}
+</style></head>
+<body><div class="app">
+<aside id="side"><div class="logo"><span class="mark">✦</span><span>LUMIA OMNI<small>INTELLIGENCE STUDIO</small></span></div>
+<button class="sidebtn" id="new">＋ &nbsp;새 대화</button><div class="hint">대화 기록</div><div id="history"></div>
+<div class="sidefoot"><button id="export">↓ 현재 대화 저장</button><button id="settings">⚙ 연결 및 보안 설정</button><div class="status"><span class="dot" id="dot"></span><span id="status">서버 연결 확인</span></div></div></aside>
+<main><div class="top"><div style="display:flex;align-items:center;gap:10px;min-width:0"><button class="icon" id="menu">☰</button><span class="topTitle" id="title">새 대화</span></div>
+<div class="tools"><select id="model" aria-label="AI 모델"><option value="claude-sonnet-5">claude-sonnet-5</option></select><button class="icon" id="refresh" title="모델 새로고침">⟳</button></div></div>
+<div class="tabs"><button class="tab active" id="tabChat">✦ AI 대화</button><button class="tab" id="tabMake">▣ 파일 제작</button></div>
+<div id="chatpane"><div class="scroll" id="scroll"><div class="inner" id="messages"></div></div>
+<div class="composerArea"><div class="composer"><div id="attachments"></div><textarea id="prompt" rows="2" placeholder="무엇이든 물어보세요. PDF, PPT, 코드도 만들 수 있어요."></textarea>
+<div class="composerbar"><div style="display:flex;gap:7px"><button id="attach">📎 파일 첨부</button><input id="file" type="file" hidden multiple accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,.json,.html,.py,.js,.ts,.css,.jpg,.jpeg,.png,.webp"><button id="read">◉ 읽기</button></div><button id="send" class="send" aria-label="보내기">↑</button></div></div>
+<div class="note">AI 답변은 확인이 필요합니다. 이미지와 파일의 내용이 API 제공업체로 전송될 수 있습니다.</div></div></div>
+<div id="maker"><div class="makerInner"><span class="eyebrow">CREATE REAL FILES</span><h2>생각을 <span class="gradient">실제 파일로.</span></h2><div class="desc">PDF · Word · Excel · PowerPoint · HTML · Python · ZIP 프로젝트를 생성하고 다운로드할 수 있습니다.</div>
+<div class="kinds" id="kinds">
+<button class="kind active" data-kind="pdf"><i>▤</i><strong>PDF</strong><small>.pdf</small></button>
+<button class="kind" data-kind="docx"><i>▣</i><strong>Word</strong><small>.docx</small></button>
+<button class="kind" data-kind="xlsx"><i>▦</i><strong>Excel</strong><small>.xlsx</small></button>
+<button class="kind" data-kind="pptx"><i>▥</i><strong>PowerPoint</strong><small>.pptx</small></button>
+<button class="kind" data-kind="html"><i>⌘</i><strong>웹사이트</strong><small>.html</small></button>
+<button class="kind" data-kind="py"><i>⌥</i><strong>Python</strong><small>.py</small></button>
+<button class="kind" data-kind="zip"><i>▧</i><strong>전체 프로젝트</strong><small>.zip</small></button>
+<button class="kind" data-kind="csv"><i>▤</i><strong>CSV 데이터</strong><small>.csv</small></button>
+</div><div class="editor"><div class="fieldtitle">어떤 파일을 만들어 드릴까요?</div><textarea id="request" placeholder="예: 상용 게임처럼 세련된 4레인 MP3 리듬게임을 하나의 HTML 파일로 만들어줘. 아이폰 화면을 우선으로 설계해줘."></textarea><button id="create" class="makebtn">✦ 파일 생성하기</button><div id="error" class="err"></div></div><div id="result"></div><div id="previewWrap"><header>↗ HTML 실시간 미리보기 (격리된 프레임)</header><iframe id="preview" sandbox="allow-scripts"></iframe></div>
+</div></div>
+</main></div>
+<div class="modalcover" id="modal"><div class="modal"><h2>🔐 스튜디오 잠금 해제</h2><p>이 사이트는 개인용입니다. Render에 등록된 <strong>APP_PASSWORD</strong>를 입력하세요. LumiaRouter API 키를 여기에 입력하지 마세요.</p><input id="pwd" type="password" placeholder="스튜디오 비밀번호" autocomplete="off"><button id="unlock">접속하기</button><p id="modalError" class="err"></p></div></div>
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+var pass=sessionStorage.getItem("lomni_pass")||"", state=JSON.parse(localStorage.getItem("lomni_hist")||"[]");
+if(!Array.isArray(state))state=[];
+var active=state.length?state[0].id:null, attachments=[], kind="pdf", busy=false;
+function save(){localStorage.setItem("lomni_hist",JSON.stringify(state.slice(0,25)))}
+function current(){return state.find(function(s){return s.id===active})}
+function escText(el,text){el.textContent=String(text||"")}
+function notify(s){$("error").textContent=String(s||"")}
+function modal(open){$("modal").classList.toggle("on",open)}
+function api(path,method,body,isForm){
+ var options={method:method||"GET",headers:{"x-studio-password":pass}};
+ if(body!==undefined){if(isForm)options.body=body;else{options.headers["Content-Type"]="application/json";options.body=JSON.stringify(body)}}
+ return fetch(path,options).then(async function(r){
+ var d=await r.json().catch(function(){return {}});
+ if(r.status===401){modal(true);throw Error(d.detail||"비밀번호가 올바르지 않습니다.")}
+ if(!r.ok)throw Error(d.detail||"서버 오류 "+r.status);
+ return d;
+ });
+}
+function node(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)escText(e,txt);return e}
+function bubble(role,text){
+ var el=node("div","msg"),av=node("div","avatar"+(role==="assistant"?" ai":""),role==="assistant"?"✦":"나");
+ var c=node("div","msgcontent"),who=node("div","who",role==="assistant"?"LUMIA OMNI":"나"),body=node("div","words",text);
+ c.append(who,body);
+ if(role==="assistant"){var b=node("button","copy","답변 복사");b.onclick=function(){navigator.clipboard.writeText(String(text||"")).catch(function(){})};c.append(b)}
+ el.append(av,c);return el
+}
+function renderHistory(){
+ $("history").replaceChildren();
+ state.forEach(function(s){
+ var b=node("button","item"+(s.id===active?" active":""),s.title||"새 대화");
+ b.onclick=function(){active=s.id;render();$("side").classList.remove("open")};
+ $("history").append(b)
+ });
+}
+function render(){
+ var s=current(),wrap=$("messages");wrap.replaceChildren();
+ $("title").textContent=s?s.title:"새 대화";
+ if(!s||!s.messages.length){
+  var hero=node("section","welcome"),ico=node("div","wmark","✦"),h=document.createElement("h1");
+  h.innerHTML='무엇이든 함께 만드는<br><span class="gradient">나만의 AI 워크스페이스</span>';
+  hero.append(ico,h,node("p","", "대화부터 개발, 문서 분석과 파일 생성까지.\nLumiaRouter의 다양한 AI 모델을 하나의 공간에서 이용하세요."));
+  var grid=node("div","prompts");
+  [["코딩 & 앱 개발","아이폰용 웹 게임을 만들어줘."],["공부 & 설명","양자역학을 이해하기 쉽게 설명해줘."],["문서 & 비즈니스","사업계획서를 체계적으로 작성해줘."],["아이디어 & 창작","독창적인 AI 서비스 아이디어를 추천해줘."]].forEach(function(p){
+   var b=node("button","promptcard"),strong=node("strong","",p[0]);b.append(strong,document.createTextNode(p[1]));
+   b.onclick=function(){$("prompt").value=p[1];$("prompt").focus()};
+   grid.append(b)
+  });hero.append(grid);wrap.append(hero)
+ }else{
+  s.messages.forEach(function(m){wrap.append(bubble(m.role,typeof m.content==="string"?m.content:"[이미지 첨부]"))})
+ }
+ renderHistory();$("scroll").scrollTop=$("scroll").scrollHeight
+}
+function newChat(){var id=String(Date.now());state.unshift({id:id,title:"새 대화",messages:[]});active=id;save();render()}
+function add(role,content){if(!current())newChat();current().messages.push({role:role,content:content});if(current().title==="새 대화"&&role==="user")current().title=String(content).slice(0,35);save();render()}
+async function loadStatus(){
+ try{
+  var s=await api("/api/status");
+  $("dot").classList.toggle("ready",s.api_configured);
+  $("status").textContent=s.api_configured?"LumiaRouter 연결 설정 완료":"LUMIA_API_KEY 설정 필요";
+ }catch(e){$("status").textContent=e.message; if(e.message.includes("비밀번호"))modal(true)}
+}
+async function models(){
+ try{var d=await api("/api/models"),v=$("model").value;
+  $("model").replaceChildren();
+  (d.data||[]).forEach(function(m){var op=node("option","",m.id);op.value=m.id;$("model").append(op)});
+  if(v&&Array.from($("model").options).some(function(o){return o.value===v}))$("model").value=v;
+ }catch(e){$("status").textContent=e.message}
+}
+async function send(){
+ if(busy)return;
+ var text=$("prompt").value.trim(), extras=attachments.slice();
+ if(!text&&!extras.length)return;
+ $("prompt").value="";attachments=[];$("attachments").replaceChildren();
+ var display=text+(extras.length?"\n[첨부: "+extras.map(function(x){return x.name}).join(", ")+"]":"");
+ add("user",display);
+ busy=true;$("send").disabled=true;
+ var waiting=bubble("assistant","답변 생성 중…");$("messages").append(waiting);$("scroll").scrollTop=$("scroll").scrollHeight;
+ try{
+  var s=current(),hist=s.messages.slice(-22).map(function(m){return {role:m.role,content:m.content}});
+  var last=hist[hist.length-1],parts=[{type:"text",text:text||"첨부 자료를 분석해줘."}];
+  extras.forEach(function(f){if(f.image)parts.push({type:"image_url",image_url:{url:f.image}});else parts[0].text+="\n\n[첨부파일 "+f.name+"]\n"+f.text});
+  last.content=parts.length===1?parts[0].text:parts;
+  var resp=await api("/api/chat","POST",{model:$("model").value,messages:hist});
+  add("assistant",resp.answer)
+ }catch(e){add("assistant","⚠ "+e.message)}
+ finally{busy=false;$("send").disabled=false}
+}
+async function upload(files){
+ for(var i=0;i<files.length;i++){
+  var f=files[i],data=new FormData();data.append("file",f);
+  try{var a=await api("/api/upload","POST",data,true);attachments.push(a);
+   $("attachments").append(node("div","chip","📎 "+a.name));
+  }catch(e){alert(f.name+": "+e.message)}
+ }
+}
+function download(a){
+ fetch("/api/download/"+a.id,{headers:{"x-studio-password":pass}}).then(function(r){if(!r.ok)throw Error("다운로드 실패");return r.blob()}).then(function(blob){
+  var url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=a.name;document.body.append(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url)},15000)
+ }).catch(function(e){notify(e.message)})
+}
+async function create(){
+ if(busy)return;
+ var prompt=$("request").value.trim();if(!prompt){notify("요구사항을 입력하세요.");return}
+ busy=true;$("create").disabled=true;notify("AI가 파일 내용을 구성하고 있어요…");$("result").replaceChildren();$("previewWrap").style.display="none";
+ try{
+  var a=await api("/api/generate","POST",{kind:kind,prompt:prompt,model:$("model").value});
+  notify("");var wrap=node("div","fileResult"),label=node("div","", "✓ "+a.name+" ("+Math.ceil(a.bytes/1024)+"KB)");
+  var btn=node("button","","↓ 다운로드");btn.onclick=function(){download(a)};
+  wrap.append(label,btn);$("result").append(wrap);
+  if(kind==="html"&&a.preview){$("previewWrap").style.display="block";$("preview").srcdoc=a.preview}
+  else if(a.preview){var pre=node("pre","","");pre.textContent=a.preview.slice(0,24000);pre.style.cssText="white-space:pre-wrap;word-break:break-word;border:1px solid #3d475e;border-radius:12px;padding:15px;font-size:12px;max-height:350px;overflow:auto";$("result").append(pre)}
+ }catch(e){notify(e.message)}finally{busy=false;$("create").disabled=false}
+}
+function tabs(what){
+ var chat=what==="chat";
+ $("chatpane").style.display=chat?"flex":"none";$("maker").style.display=chat?"none":"block";
+ $("tabChat").classList.toggle("active",chat);$("tabMake").classList.toggle("active",!chat)
+}
+$("tabChat").onclick=function(){tabs("chat")};$("tabMake").onclick=function(){tabs("make")};
+$("new").onclick=newChat;
+$("menu").onclick=function(){$("side").classList.toggle("open")};
+$("refresh").onclick=models;
+$("send").onclick=send;
+$("prompt").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}});
+$("attach").onclick=function(){$("file").click()};
+$("file").onchange=function(){upload(this.files);this.value=""};
+$("create").onclick=create;
+$("kinds").querySelectorAll(".kind").forEach(function(b){b.onclick=function(){
+ kind=b.dataset.kind;$("kinds").querySelectorAll(".kind").forEach(function(x){x.classList.remove("active")});b.classList.add("active");
+}});
+$("read").onclick=function(){var s=current();if(!s)return;var m=s.messages.filter(function(x){return x.role==="assistant"}).slice(-1)[0];if(m&&"speechSynthesis" in window){speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(m.content);u.lang="ko-KR";speechSynthesis.speak(u)}};
+$("export").onclick=function(){var s=current();if(!s)return;var text=s.messages.map(function(x){return (x.role==="user"?"나":"LUMIA")+":\n"+x.content}).join("\n\n---\n\n");var b=new Blob([text],{type:"text/plain"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download="lumia-chat.txt";a.click();setTimeout(function(){URL.revokeObjectURL(u)},1500)};
+$("settings").onclick=function(){modal(true)};
+$("unlock").onclick=async function(){pass=$("pwd").value;try{await api("/api/status");sessionStorage.setItem("lomni_pass",pass);modal(false);$("modalError").textContent="";loadStatus();models()}catch(e){$("modalError").textContent=e.message}};
+$("pwd").addEventListener("keydown",function(e){if(e.key==="Enter")$("unlock").click()});
+render();if(!pass)modal(true);else{loadStatus();models()}
+})();
+</script></body></html>
