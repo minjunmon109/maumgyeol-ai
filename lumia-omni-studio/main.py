@@ -49,9 +49,10 @@ async def complete(messages, model):
         raise HTTPException(502, "LumiaRouter 응답 형식을 확인해 주세요.")
 
 def strip_fences(s):
-    s = s.strip()
-    s = re.sub(r"^\\s*\\\`{3}(?:\\w+)?\\s*\\n", "", s)
-    return re.sub(r"\\n\\\`{3}\\s*$", "", s).strip()
+    lines = s.strip().splitlines()
+    if lines and lines[0].strip().startswith('```'): lines = lines[1:]
+    if lines and lines[-1].strip() == '```': lines = lines[:-1]
+    return '\n'.join(lines).strip()
 
 def decode_json(s):
     s = strip_fences(s)
